@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:6000';
+const BASE_URL = 'http://localhost:9595';
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -18,10 +18,10 @@ api.interceptors.request.use((config) => {
 
 export const authAPI = {
   register: (email: string, password: string, name: string) =>
-    api.post('/register', { email, password, name }),
+    api.post('/api/auth/register', { email, password, name }),
   
   login: (email: string, password: string) =>
-    api.post('/login', { email, password }),
+    api.post('/api/auth/login', { email, password }),
 };
 
 export const pollAPI = {
