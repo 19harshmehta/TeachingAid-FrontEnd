@@ -33,14 +33,26 @@ const Dashboard = () => {
 
   const fetchPolls = async () => {
     try {
+      console.log('Fetching polls...');
       const response = await pollAPI.getMyPolls();
-      setPolls(response.data);
+      console.log('API Response:', response);
+      
+      // Ensure we have an array
+      const pollsData = Array.isArray(response.data) ? response.data : 
+                       Array.isArray(response.data?.polls) ? response.data.polls :
+                       [];
+      
+      console.log('Processed polls data:', pollsData);
+      setPolls(pollsData);
     } catch (error) {
+      console.error('Error fetching polls:', error);
       toast({
         title: "Error",
         description: "Failed to fetch polls",
         variant: "destructive",
       });
+      // Ensure polls is still an array on error
+      setPolls([]);
     } finally {
       setLoading(false);
     }
@@ -87,6 +99,9 @@ const Dashboard = () => {
     );
   }
 
+  // Ensure polls is always an array before rendering
+  const safePollsArray = Array.isArray(polls) ? polls : [];
+
   return (
     <div className="min-h-screen bg-gradient-main">
       <div className="container mx-auto px-4 py-8">
@@ -126,7 +141,7 @@ const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Polls</p>
-                  <p className="text-2xl font-bold text-gray-800">{polls.length}</p>
+                  <p className="text-2xl font-bold text-gray-800">{safePollsArray.length}</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-purple-600" />
               </div>
@@ -139,7 +154,7 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">Active Polls</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {polls.filter(p => p.isActive).length}
+                    {safePollsArray.filter(p => p.isActive).length}
                   </p>
                 </div>
                 <Play className="h-8 w-8 text-green-600" />
@@ -153,7 +168,7 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">Total Votes</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {polls.reduce((sum, poll) => sum + (poll.votes?.length || 0), 0)}
+                    {safePollsArray.reduce((sum, poll) => sum + (poll.votes?.length || 0), 0)}
                   </p>
                 </div>
                 <Eye className="h-8 w-8 text-blue-600" />
@@ -168,7 +183,7 @@ const Dashboard = () => {
             <CardTitle className="text-xl font-semibold">Your Polls</CardTitle>
           </CardHeader>
           <CardContent>
-            {polls.length === 0 ? (
+            {safePollsArray.length === 0 ? (
               <div className="text-center py-12">
                 <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">No polls created yet</p>
@@ -181,7 +196,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {polls.map((poll) => (
+                {safePollsArray.map((poll) => (
                   <div 
                     key={poll._id} 
                     className="flex items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors"
