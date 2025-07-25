@@ -5,28 +5,58 @@ const SOCKET_URL = 'http://localhost:9595';
 
 class SocketService {
   private socket: Socket | null = null;
+  private connectionPromise: Promise<Socket> | null = null;
 
-  connect() {
-    if (!this.socket || !this.socket.connected) {
+  connect(): Promise<Socket> {
+    if (this.socket && this.socket.connected) {
+      return Promise.resolve(this.socket);
+    }
+
+    if (this.connectionPromise) {
+      return this.connectionPromise;
+    }
+
+    this.connectionPromise = new Promise((resolve, reject) => {
       console.log('Connecting to socket server at:', SOCKET_URL);
       this.socket = io(SOCKET_URL, {
         transports: ['websocket'],
-        timeout: 5000,
+        timeout: 10000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
       });
       
       this.socket.on('connect', () => {
         console.log('Socket connected successfully');
+        resolve(this.socket!);
       });
       
       this.socket.on('disconnect', () => {
         console.log('Socket disconnected');
+        this.connectionPromise = null;
+      });
+      
+      this.socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        this.connectionPromise = null;
+        reject(error);
       });
       
       this.socket.on('error', (error) => {
         console.error('Socket error:', error);
       });
-    }
-    return this.socket;
+
+      // Set timeout for connection
+      setTimeout(() => {
+        if (!this.socket?.connected) {
+          console.error('Socket connection timeout');
+          this.connectionPromise = null;
+          reject(new Error('Connection timeout'));
+        }
+      }, 10000);
+    });
+
+    return this.connectionPromise;
   }
 
   disconnect() {
@@ -34,22 +64,27 @@ class SocketService {
       console.log('Disconnecting socket');
       this.socket.disconnect();
       this.socket = null;
+      this.connectionPromise = null;
     }
   }
 
-  joinPoll(pollCode: string) {
-    if (this.socket && this.socket.connected) {
+  async joinPoll(pollCode: string) {
+    try {
+      const socket = await this.connect();
       console.log('Joining poll room:', pollCode);
-      this.socket.emit('joinPoll', { pollCode });
-    } else {
-      console.warn('Socket not connected, cannot join poll');
+      socket.emit('joinPoll', { pollCode });
+    } catch (error) {
+      console.error('Failed to join poll:', error);
     }
   }
 
-  onVoteUpdate(callback: (data: { pollCode: string; votes: number[] }) => void) {
-    if (this.socket) {
+  async onVoteUpdate(callback: (data: { pollCode: string; votes: number[] }) => void) {
+    try {
+      const socket = await this.connect();
       console.log('Setting up vote update listener');
-      this.socket.on('voteUpdate', callback);
+      socket.on('voteUpdate', callback);
+    } catch (error) {
+      console.error('Failed to set up vote update listener:', error);
     }
   }
 
@@ -58,6 +93,10 @@ class SocketService {
       console.log('Removing vote update listener');
       this.socket.off('voteUpdate');
     }
+  }
+
+  getSocket() {
+    return this.socket;
   }
 }
 

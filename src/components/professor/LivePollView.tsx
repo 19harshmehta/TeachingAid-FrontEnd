@@ -13,7 +13,7 @@ interface Poll {
   options: string[];
   code: string;
   isActive: boolean;
-  votes: number[]; // Changed from any[] to number[]
+  votes: number[];
 }
 
 interface LivePollViewProps {
@@ -26,35 +26,60 @@ const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'
 const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
   const [votes, setVotes] = useState<number[]>(poll.votes || []);
   const [copied, setCopied] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('Setting up socket connection for poll:', poll.code);
-    console.log('Initial votes:', poll.votes);
-    
-    const socket = socketService.connect();
-    
-    // Join the poll room
-    socketService.joinPoll(poll.code);
-    
-    // Listen for vote updates
-    socketService.onVoteUpdate((data) => {
-      console.log('Vote update received:', data);
-      if (data.pollCode === poll.code) {
-        console.log('Updating votes from:', votes, 'to:', data.votes);
-        setVotes(data.votes);
-      }
-    });
+    let mounted = true;
 
-    // Set initial votes
-    setVotes(poll.votes || []);
+    const setupSocket = async () => {
+      try {
+        console.log('Setting up socket connection for poll:', poll.code);
+        console.log('Initial votes:', poll.votes);
+        
+        // Set initial votes
+        setVotes(poll.votes || []);
+        
+        // Connect to socket
+        const socket = await socketService.connect();
+        
+        if (!mounted) return;
+        
+        setSocketConnected(true);
+        
+        // Set up vote update listener
+        await socketService.onVoteUpdate((data) => {
+          console.log('Vote update received:', data);
+          if (data.pollCode === poll.code && mounted) {
+            console.log('Updating votes from:', votes, 'to:', data.votes);
+            setVotes(data.votes);
+          }
+        });
+        
+        // Join the poll room
+        await socketService.joinPoll(poll.code);
+        
+      } catch (error) {
+        console.error('Failed to setup socket:', error);
+        if (mounted) {
+          toast({
+            title: "Connection Error",
+            description: "Failed to connect to live updates",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    setupSocket();
 
     return () => {
+      mounted = false;
       console.log('Cleaning up socket connection');
       socketService.offVoteUpdate();
-      socketService.disconnect();
+      setSocketConnected(false);
     };
-  }, [poll.code, poll.votes]);
+  }, [poll.code, poll.votes, toast]);
 
   const copyPollCode = async () => {
     try {
@@ -126,6 +151,12 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
                 )}
               </Button>
             </div>
+            {socketConnected && (
+              <div className="flex items-center justify-center gap-2 mt-1">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600">Live Connected</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-purple-700">
