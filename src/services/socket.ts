@@ -72,17 +72,17 @@ class SocketService {
     try {
       const socket = await this.connect();
       console.log('Joining poll room:', pollCode);
-      socket.emit('joinPoll', { pollCode });
+      socket.emit('join_poll', pollCode);
     } catch (error) {
       console.error('Failed to join poll:', error);
     }
   }
 
-  async onVoteUpdate(callback: (data: { pollCode: string; votes: number[] }) => void) {
+  async onVoteUpdate(callback: (updatedPoll: any) => void) {
     try {
       const socket = await this.connect();
       console.log('Setting up vote update listener');
-      socket.on('voteUpdate', callback);
+      socket.on('vote_update', callback);
     } catch (error) {
       console.error('Failed to set up vote update listener:', error);
     }
@@ -91,7 +91,7 @@ class SocketService {
   offVoteUpdate() {
     if (this.socket) {
       console.log('Removing vote update listener');
-      this.socket.off('voteUpdate');
+      this.socket.off('vote_update');
     }
   }
 

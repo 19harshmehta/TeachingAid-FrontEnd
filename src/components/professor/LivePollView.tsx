@@ -24,7 +24,7 @@ interface LivePollViewProps {
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
-  const [votes, setVotes] = useState<number[]>(poll.votes || []);
+  const [pollData, setPollData] = useState<Poll>(poll);
   const [copied, setCopied] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const { toast } = useToast();
@@ -35,10 +35,10 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     const setupSocket = async () => {
       try {
         console.log('Setting up socket connection for poll:', poll.code);
-        console.log('Initial votes:', poll.votes);
+        console.log('Initial poll data:', poll);
         
-        // Set initial votes
-        setVotes(poll.votes || []);
+        // Set initial poll data
+        setPollData(poll);
         
         // Connect to socket
         const socket = await socketService.connect();
@@ -48,11 +48,11 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
         setSocketConnected(true);
         
         // Set up vote update listener
-        await socketService.onVoteUpdate((data) => {
-          console.log('Vote update received:', data);
-          if (data.pollCode === poll.code && mounted) {
-            console.log('Updating votes from:', votes, 'to:', data.votes);
-            setVotes(data.votes);
+        await socketService.onVoteUpdate((updatedPoll) => {
+          console.log('Vote update received:', updatedPoll);
+          if (updatedPoll.code === poll.code && mounted) {
+            console.log('Updating poll data from:', pollData, 'to:', updatedPoll);
+            setPollData(updatedPoll);
           }
         });
         
@@ -79,11 +79,11 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       socketService.offVoteUpdate();
       setSocketConnected(false);
     };
-  }, [poll.code, poll.votes, toast]);
+  }, [poll.code, toast]);
 
   const copyPollCode = async () => {
     try {
-      await navigator.clipboard.writeText(poll.code);
+      await navigator.clipboard.writeText(pollData.code);
       setCopied(true);
       toast({
         title: "Copied!",
@@ -99,12 +99,12 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     }
   };
 
-  // Calculate total votes
-  const totalVotes = votes.reduce((sum, count) => sum + count, 0);
+  // Calculate total votes from current poll data
+  const totalVotes = pollData.votes.reduce((sum, count) => sum + count, 0);
 
-  // Prepare chart data
-  const chartData = poll.options.map((option, index) => {
-    const voteCount = votes[index] || 0;
+  // Prepare chart data using current poll data
+  const chartData = pollData.options.map((option, index) => {
+    const voteCount = pollData.votes[index] || 0;
     return {
       option: option.length > 20 ? option.substring(0, 20) + '...' : option,
       fullOption: option,
@@ -134,7 +134,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
           </Button>
 
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-800">{poll.question}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{pollData.question}</h1>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-gray-600">Poll Code:</span>
               <Button
@@ -143,7 +143,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
                 onClick={copyPollCode}
                 className="bg-white/70 backdrop-blur-sm hover:bg-white/90"
               >
-                <span className="font-mono text-lg font-bold">{poll.code}</span>
+                <span className="font-mono text-lg font-bold">{pollData.code}</span>
                 {copied ? (
                   <Check className="h-4 w-4 ml-2 text-green-600" />
                 ) : (
@@ -264,7 +264,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
               {window.location.origin}/join
             </p>
             <p className="text-sm text-purple-600">
-              Ask them to enter poll code: <span className="font-bold">{poll.code}</span>
+              Ask them to enter poll code: <span className="font-bold">{pollData.code}</span>
             </p>
           </CardContent>
         </Card>
