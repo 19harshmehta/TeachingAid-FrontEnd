@@ -13,7 +13,7 @@ interface Poll {
   options: string[];
   code: string;
   isActive: boolean;
-  votes: any[];
+  votes: number[]; // Changed from any[] to number[]
 }
 
 interface LivePollViewProps {
@@ -24,11 +24,14 @@ interface LivePollViewProps {
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
-  const [votes, setVotes] = useState(poll.votes || []);
+  const [votes, setVotes] = useState<number[]>(poll.votes || []);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('Setting up socket connection for poll:', poll.code);
+    console.log('Initial votes:', poll.votes);
+    
     const socket = socketService.connect();
     
     // Join the poll room
@@ -38,15 +41,20 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     socketService.onVoteUpdate((data) => {
       console.log('Vote update received:', data);
       if (data.pollCode === poll.code) {
+        console.log('Updating votes from:', votes, 'to:', data.votes);
         setVotes(data.votes);
       }
     });
 
+    // Set initial votes
+    setVotes(poll.votes || []);
+
     return () => {
+      console.log('Cleaning up socket connection');
       socketService.offVoteUpdate();
       socketService.disconnect();
     };
-  }, [poll.code]);
+  }, [poll.code, poll.votes]);
 
   const copyPollCode = async () => {
     try {
@@ -66,14 +74,17 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     }
   };
 
+  // Calculate total votes
+  const totalVotes = votes.reduce((sum, count) => sum + count, 0);
+
   // Prepare chart data
   const chartData = poll.options.map((option, index) => {
-    const voteCount = votes.filter(vote => vote.optionIndex === index).length;
+    const voteCount = votes[index] || 0;
     return {
       option: option.length > 20 ? option.substring(0, 20) + '...' : option,
       fullOption: option,
       votes: voteCount,
-      percentage: votes.length > 0 ? Math.round((voteCount / votes.length) * 100) : 0
+      percentage: totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0
     };
   });
 
@@ -119,7 +130,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
 
           <div className="flex items-center gap-2 text-purple-700">
             <Users className="h-5 w-5" />
-            <span className="font-semibold">{votes.length} votes</span>
+            <span className="font-semibold">{totalVotes} votes</span>
           </div>
         </div>
 

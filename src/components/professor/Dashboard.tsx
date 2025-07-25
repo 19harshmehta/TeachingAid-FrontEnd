@@ -16,7 +16,7 @@ interface Poll {
   code: string;
   isActive: boolean;
   createdAt: string;
-  votes: any[];
+  votes: number[]; // Changed from any[] to number[]
 }
 
 const Dashboard = () => {
@@ -51,7 +51,14 @@ const Dashboard = () => {
       }
       
       console.log('Processed polls data:', pollsData);
-      setPolls(pollsData);
+      
+      // Ensure votes is always an array of numbers
+      const processedPolls = pollsData.map(poll => ({
+        ...poll,
+        votes: Array.isArray(poll.votes) ? poll.votes : []
+      }));
+      
+      setPolls(processedPolls);
     } catch (error) {
       console.error('Error fetching polls:', error);
       toast({
@@ -59,7 +66,6 @@ const Dashboard = () => {
         description: "Failed to fetch polls",
         variant: "destructive",
       });
-      // Ensure polls is still an array on error
       setPolls([]);
     } finally {
       setLoading(false);
@@ -179,7 +185,10 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm text-gray-600">Total Votes</p>
                   <p className="text-2xl font-bold text-gray-800">
-                    {safePollsArray.reduce((sum, poll) => sum + (poll.votes?.length || 0), 0)}
+                    {safePollsArray.reduce((sum, poll) => {
+                      const pollVotes = Array.isArray(poll.votes) ? poll.votes : [];
+                      return sum + pollVotes.reduce((voteSum, count) => voteSum + count, 0);
+                    }, 0)}
                   </p>
                 </div>
                 <Eye className="h-8 w-8 text-blue-600" />
@@ -207,46 +216,51 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {safePollsArray.map((poll) => (
-                  <div 
-                    key={poll._id} 
-                    className="flex items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors"
-                  >
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{poll.question}</h3>
-                      <p className="text-sm text-gray-600">
-                        Code: {poll.code} • {poll.options.length} options • {poll.votes?.length || 0} votes
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Created: {new Date(poll.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {poll.isActive && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleViewLive(poll)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Live
-                        </Button>
-                      )}
+                {safePollsArray.map((poll) => {
+                  const pollVotes = Array.isArray(poll.votes) ? poll.votes : [];
+                  const totalVotes = pollVotes.reduce((sum, count) => sum + count, 0);
+                  
+                  return (
+                    <div 
+                      key={poll._id} 
+                      className="flex items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors"
+                    >
+                      <div>
+                        <h3 className="font-semibold text-gray-800">{poll.question}</h3>
+                        <p className="text-sm text-gray-600">
+                          Code: {poll.code} • {poll.options.length} options • {totalVotes} votes
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Created: {new Date(poll.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                       
-                      {!poll.isActive && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleRelaunch(poll._id)}
-                          className="bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Play className="h-4 w-4 mr-1" />
-                          Relaunch
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {poll.isActive && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleViewLive(poll)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Live
+                          </Button>
+                        )}
+                        
+                        {!poll.isActive && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleRelaunch(poll._id)}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Play className="h-4 w-4 mr-1" />
+                            Relaunch
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
