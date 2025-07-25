@@ -25,8 +25,8 @@ export const authAPI = {
 };
 
 export const pollAPI = {
-  create: (title: string, options: string[]) =>
-    api.post('/api/poll/create', { title, options }),
+  create: (question: string, options: string[]) =>
+    api.post('/api/poll/create', { question, options }),
   
   getMyPolls: () =>
     api.get('/api/poll/mypolls'),
@@ -37,8 +37,8 @@ export const pollAPI = {
   getPollByCode: (code: string) =>
     api.get(`/api/poll/${code}`),
   
-  vote: (pollId: string, optionIndex: number, voterId: string) =>
-    api.post('/api/poll/vote', { pollId, optionIndex, voterId }),
+  vote: (code: string, optionIndex: number, fingerprint: string) =>
+    api.post('/api/poll/vote', { code, optionIndex, fingerprint }),
 };
 
 export default api;

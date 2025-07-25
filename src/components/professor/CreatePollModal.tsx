@@ -15,7 +15,7 @@ interface CreatePollModalProps {
 }
 
 const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
-  const [title, setTitle] = useState('');
+  const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -39,10 +39,10 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!title.trim()) {
+    if (!question.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a poll title",
+        description: "Please enter a poll question",
         variant: "destructive",
       });
       return;
@@ -61,17 +61,18 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
     setLoading(true);
 
     try {
-      const response = await pollAPI.create(title.trim(), validOptions);
+      const response = await pollAPI.create(question.trim(), validOptions);
       toast({
         title: "Poll Created!",
         description: `Poll code: ${response.data.code}`,
       });
       
       // Reset form
-      setTitle('');
+      setQuestion('');
       setOptions(['', '']);
       onPollCreated();
     } catch (error) {
+      console.error('Error creating poll:', error);
       toast({
         title: "Error",
         description: "Failed to create poll",
@@ -93,12 +94,12 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">Poll Question</Label>
+            <Label htmlFor="question">Poll Question</Label>
             <Input
-              id="title"
+              id="question"
               placeholder="What's your favorite programming language?"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
               required
             />
           </div>

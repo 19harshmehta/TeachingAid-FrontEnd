@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface Poll {
   _id: string;
-  title: string;
+  question: string;
   options: string[];
   code: string;
   isActive: boolean;
@@ -40,6 +40,7 @@ const VotingPage = () => {
     try {
       const fp = await getFingerprint();
       setFingerprint(fp);
+      console.log('Generated fingerprint:', fp);
     } catch (error) {
       console.error('Failed to generate fingerprint:', error);
       toast({
@@ -54,9 +55,12 @@ const VotingPage = () => {
     if (!code) return;
     
     try {
+      console.log('Fetching poll with code:', code);
       const response = await pollAPI.getPollByCode(code);
+      console.log('Poll fetched:', response.data);
       setPoll(response.data);
     } catch (error) {
+      console.error('Error fetching poll:', error);
       toast({
         title: "Poll Not Found",
         description: "The poll code is invalid or the poll is no longer active",
@@ -72,13 +76,16 @@ const VotingPage = () => {
     setLoading(true);
 
     try {
-      await pollAPI.vote(poll._id, selectedOption, fingerprint);
+      console.log('Submitting vote:', { code: poll.code, optionIndex: selectedOption, fingerprint });
+      const response = await pollAPI.vote(poll.code, selectedOption, fingerprint);
+      console.log('Vote response:', response.data);
       setHasVoted(true);
       toast({
         title: "Vote Recorded!",
         description: "Thank you for participating in the poll",
       });
     } catch (error: any) {
+      console.error('Vote error:', error);
       toast({
         title: "Vote Failed",
         description: error.response?.data?.message || "Failed to record your vote",
@@ -143,7 +150,7 @@ const VotingPage = () => {
               <span className="font-mono text-lg font-bold text-purple-600">{poll.code}</span>
             </div>
             <CardTitle className="text-2xl font-bold text-gray-800 mb-2">
-              {poll.title}
+              {poll.question}
             </CardTitle>
             <div className="flex items-center justify-center gap-2 text-purple-700">
               <Users className="h-4 w-4" />

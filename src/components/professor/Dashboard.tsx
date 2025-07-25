@@ -11,7 +11,7 @@ import LivePollView from './LivePollView';
 
 interface Poll {
   _id: string;
-  title: string;
+  question: string;
   options: string[];
   code: string;
   isActive: boolean;
@@ -37,10 +37,18 @@ const Dashboard = () => {
       const response = await pollAPI.getMyPolls();
       console.log('API Response:', response);
       
-      // Ensure we have an array
-      const pollsData = Array.isArray(response.data) ? response.data : 
-                       Array.isArray(response.data?.polls) ? response.data.polls :
-                       [];
+      // Ensure we have an array - handle different response structures
+      let pollsData = [];
+      if (Array.isArray(response.data)) {
+        pollsData = response.data;
+      } else if (response.data && Array.isArray(response.data.polls)) {
+        pollsData = response.data.polls;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        pollsData = response.data.data;
+      } else {
+        console.warn('Unexpected response structure:', response.data);
+        pollsData = [];
+      }
       
       console.log('Processed polls data:', pollsData);
       setPolls(pollsData);
@@ -60,13 +68,16 @@ const Dashboard = () => {
 
   const handleRelaunch = async (pollId: string) => {
     try {
+      console.log('Relaunching poll:', pollId);
       const response = await pollAPI.relaunch(pollId);
+      console.log('Relaunch response:', response);
       toast({
         title: "Poll Relaunched!",
         description: `Poll code: ${response.data.code}`,
       });
       fetchPolls();
     } catch (error) {
+      console.error('Error relaunching poll:', error);
       toast({
         title: "Error",
         description: "Failed to relaunch poll",
@@ -202,7 +213,7 @@ const Dashboard = () => {
                     className="flex items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors"
                   >
                     <div>
-                      <h3 className="font-semibold text-gray-800">{poll.title}</h3>
+                      <h3 className="font-semibold text-gray-800">{poll.question}</h3>
                       <p className="text-sm text-gray-600">
                         Code: {poll.code} • {poll.options.length} options • {poll.votes?.length || 0} votes
                       </p>

@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface Poll {
   _id: string;
-  title: string;
+  question: string;
   options: string[];
   code: string;
   isActive: boolean;
@@ -36,6 +36,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     
     // Listen for vote updates
     socketService.onVoteUpdate((data) => {
+      console.log('Vote update received:', data);
       if (data.pollCode === poll.code) {
         setVotes(data.votes);
       }
@@ -97,7 +98,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
           </Button>
 
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-800">{poll.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{poll.question}</h1>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-gray-600">Poll Code:</span>
               <Button
