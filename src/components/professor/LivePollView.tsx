@@ -1,8 +1,8 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Users, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -42,79 +42,164 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
   });
   const [copied, setCopied] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const { toast } = useToast();
+  
+  const socketRef = useRef<Socket | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchPollResults = useCallback(async () => {
+    try {
+      console.log('🔄 Fetching poll results for code:', poll.code);
+      const response = await pollAPI.getPollResults(poll.code);
+      console.log('📊 Poll results received:', response.data);
+      
+      // Handle different possible response structures
+      let resultsData = response.data;
+      if (response.data.data) {
+        resultsData = response.data.data;
+      }
+      
+      if (resultsData.question && resultsData.results) {
+        setPollResults(resultsData);
+        setLastUpdate(new Date());
+        console.log('✅ Poll results updated successfully');
+      } else {
+        console.warn('⚠️ Unexpected response structure:', resultsData);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching poll results:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch latest poll results",
+        variant: "destructive",
+      });
+    }
+  }, [poll.code, toast]);
+
+  const manualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchPollResults();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
 
   useEffect(() => {
-    let socket: Socket | null = null;
+    let mounted = true;
 
-    const setupSocketAndFetchResults = async () => {
+    const setupConnection = async () => {
       try {
-        console.log('Setting up socket connection for poll:', poll.code);
+        console.log('🚀 Setting up socket connection for poll:', poll.code);
         
-        // Initialize socket connection
-        socket = io('http://localhost:9595');
-        
+        // Create socket connection
+        socketRef.current = io('http://localhost:9595', {
+          transports: ['websocket'],
+          timeout: 5000,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+        });
+
+        const socket = socketRef.current;
+
         socket.on('connect', () => {
-          console.log('Socket connected successfully');
+          if (!mounted) return;
+          console.log('🔗 Socket connected successfully');
           setSocketConnected(true);
           
           // Join the poll room
-          console.log('Joining poll room:', poll.code);
-          socket?.emit('join_poll', poll.code);
+          console.log('🏠 Joining poll room:', poll.code);
+          socket.emit('join_poll', poll.code);
+          
+          toast({
+            title: "Live Connection Active",
+            description: "Real-time updates are now enabled",
+          });
         });
 
         socket.on('disconnect', () => {
-          console.log('Socket disconnected');
+          if (!mounted) return;
+          console.log('🔌 Socket disconnected');
           setSocketConnected(false);
         });
 
         socket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
+          if (!mounted) return;
+          console.error('💥 Socket connection error:', error);
+          setSocketConnected(false);
           toast({
-            title: "Connection Error",
-            description: "Failed to connect to live updates",
+            title: "Connection Issue",
+            description: "Falling back to manual refresh mode",
             variant: "destructive",
           });
         });
 
-        // Listen for poll updates
+        // Listen for poll updates - try multiple event names
         socket.on('poll_updated', async () => {
-          console.log('Poll update received, fetching latest results');
-          try {
-            const response = await pollAPI.getPollResults(poll.code);
-            console.log('Updated poll results:', response.data);
-            setPollResults(response.data);
-          } catch (error) {
-            console.error('Error fetching updated poll results:', error);
-          }
+          if (!mounted) return;
+          console.log('📡 Received poll_updated event');
+          await fetchPollResults();
+        });
+
+        socket.on('vote_update', async () => {
+          if (!mounted) return;
+          console.log('📡 Received vote_update event');
+          await fetchPollResults();
+        });
+
+        socket.on('poll_votes_changed', async () => {
+          if (!mounted) return;
+          console.log('📡 Received poll_votes_changed event');
+          await fetchPollResults();
         });
 
         // Fetch initial results
-        const response = await pollAPI.getPollResults(poll.code);
-        console.log('Initial poll results:', response.data);
-        setPollResults(response.data);
+        await fetchPollResults();
+
+        // Setup fallback polling every 5 seconds if socket is not connected
+        pollIntervalRef.current = setInterval(() => {
+          if (!socketConnected && mounted) {
+            console.log('⏰ Fallback polling - fetching results');
+            fetchPollResults();
+          }
+        }, 5000);
 
       } catch (error) {
-        console.error('Failed to setup socket or fetch results:', error);
+        console.error('💥 Failed to setup connection:', error);
+        if (!mounted) return;
+        
         toast({
-          title: "Error",
-          description: "Failed to load live poll results",
+          title: "Setup Error",
+          description: "Failed to setup live connection, using fallback mode",
           variant: "destructive",
         });
+        
+        // Setup fallback polling
+        pollIntervalRef.current = setInterval(() => {
+          if (mounted) fetchPollResults();
+        }, 3000);
       }
     };
 
-    setupSocketAndFetchResults();
+    setupConnection();
 
-    // Cleanup function
     return () => {
-      if (socket) {
-        console.log('Cleaning up socket connection');
-        socket.disconnect();
-        setSocketConnected(false);
+      mounted = false;
+      console.log('🧹 Cleaning up socket connection');
+      
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
+      
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      
+      setSocketConnected(false);
     };
-  }, [poll.code, toast]);
+  }, [poll.code, fetchPollResults, toast, socketConnected]);
 
   const copyPollCode = async () => {
     try {
@@ -183,12 +268,36 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
                 )}
               </Button>
             </div>
-            {socketConnected && (
-              <div className="flex items-center justify-center gap-2 mt-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-600">Live Connected</span>
-              </div>
-            )}
+            
+            {/* Connection Status */}
+            <div className="flex items-center justify-center gap-4 mt-2">
+              {socketConnected ? (
+                <div className="flex items-center gap-2">
+                  <Wifi className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600">Live Connected</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <WifiOff className="h-4 w-4 text-orange-500" />
+                  <span className="text-xs text-orange-500">Polling Mode</span>
+                </div>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={manualRefresh}
+                disabled={isRefreshing}
+                className="h-6 px-2 text-xs"
+              >
+                <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+            
+            <p className="text-xs text-gray-500 mt-1">
+              Last updated: {lastUpdate.toLocaleTimeString()}
+            </p>
           </div>
 
           <div className="flex items-center gap-2 text-purple-700">
