@@ -48,14 +48,19 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
   
   const socketRef = useRef<Socket | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
+  // Stable function that doesn't change between renders
   const fetchPollResults = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
     try {
       console.log('🔄 Fetching poll results for code:', poll.code);
       const response = await pollAPI.getPollResults(poll.code);
       console.log('📊 Poll results received:', response.data);
       
-      // Handle different possible response structures
+      if (!mountedRef.current) return;
+      
       let resultsData = response.data;
       if (response.data.data) {
         resultsData = response.data.data;
@@ -70,11 +75,13 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       }
     } catch (error) {
       console.error('❌ Error fetching poll results:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch latest poll results",
-        variant: "destructive",
-      });
+      if (mountedRef.current) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch latest poll results",
+          variant: "destructive",
+        });
+      }
     }
   }, [poll.code, toast]);
 
@@ -84,122 +91,99 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  // Initialize socket connection once
   useEffect(() => {
-    let mounted = true;
+    mountedRef.current = true;
+    
+    console.log('🚀 Initializing socket connection for poll:', poll.code);
+    
+    // Create socket connection
+    const socket = io('http://localhost:9595', {
+      transports: ['websocket'],
+      timeout: 10000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-    const setupConnection = async () => {
-      try {
-        console.log('🚀 Setting up socket connection for poll:', poll.code);
-        
-        // Create socket connection
-        socketRef.current = io('http://localhost:9595', {
-          transports: ['websocket'],
-          timeout: 5000,
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-        });
+    socketRef.current = socket;
 
-        const socket = socketRef.current;
+    // Set up event listeners
+    socket.on('connect', () => {
+      if (!mountedRef.current) return;
+      console.log('🔗 Socket connected successfully');
+      setSocketConnected(true);
+      
+      // Join the poll room
+      console.log('🏠 Joining poll room:', poll.code);
+      socket.emit('join_poll', poll.code);
+      
+      toast({
+        title: "Live Connection Active",
+        description: "Real-time updates are now enabled",
+      });
+    });
 
-        socket.on('connect', () => {
-          if (!mounted) return;
-          console.log('🔗 Socket connected successfully');
-          setSocketConnected(true);
-          
-          // Join the poll room
-          console.log('🏠 Joining poll room:', poll.code);
-          socket.emit('join_poll', poll.code);
-          
-          toast({
-            title: "Live Connection Active",
-            description: "Real-time updates are now enabled",
-          });
-        });
+    socket.on('disconnect', () => {
+      if (!mountedRef.current) return;
+      console.log('🔌 Socket disconnected');
+      setSocketConnected(false);
+    });
 
-        socket.on('disconnect', () => {
-          if (!mounted) return;
-          console.log('🔌 Socket disconnected');
-          setSocketConnected(false);
-        });
+    socket.on('connect_error', (error) => {
+      if (!mountedRef.current) return;
+      console.error('💥 Socket connection error:', error);
+      setSocketConnected(false);
+    });
 
-        socket.on('connect_error', (error) => {
-          if (!mounted) return;
-          console.error('💥 Socket connection error:', error);
-          setSocketConnected(false);
-          toast({
-            title: "Connection Issue",
-            description: "Falling back to manual refresh mode",
-            variant: "destructive",
-          });
-        });
+    // Listen for poll updates
+    socket.on('poll_updated', () => {
+      if (!mountedRef.current) return;
+      console.log('📡 Received poll_updated event');
+      fetchPollResults();
+    });
 
-        // Listen for poll updates - try multiple event names
-        socket.on('poll_updated', async () => {
-          if (!mounted) return;
-          console.log('📡 Received poll_updated event');
-          await fetchPollResults();
-        });
+    socket.on('vote_update', () => {
+      if (!mountedRef.current) return;
+      console.log('📡 Received vote_update event');
+      fetchPollResults();
+    });
 
-        socket.on('vote_update', async () => {
-          if (!mounted) return;
-          console.log('📡 Received vote_update event');
-          await fetchPollResults();
-        });
+    socket.on('poll_votes_changed', () => {
+      if (!mountedRef.current) return;
+      console.log('📡 Received poll_votes_changed event');
+      fetchPollResults();
+    });
 
-        socket.on('poll_votes_changed', async () => {
-          if (!mounted) return;
-          console.log('📡 Received poll_votes_changed event');
-          await fetchPollResults();
-        });
+    // Fetch initial results
+    fetchPollResults();
 
-        // Fetch initial results
-        await fetchPollResults();
-
-        // Setup fallback polling every 5 seconds if socket is not connected
-        pollIntervalRef.current = setInterval(() => {
-          if (!socketConnected && mounted) {
-            console.log('⏰ Fallback polling - fetching results');
-            fetchPollResults();
-          }
-        }, 5000);
-
-      } catch (error) {
-        console.error('💥 Failed to setup connection:', error);
-        if (!mounted) return;
-        
-        toast({
-          title: "Setup Error",
-          description: "Failed to setup live connection, using fallback mode",
-          variant: "destructive",
-        });
-        
-        // Setup fallback polling
-        pollIntervalRef.current = setInterval(() => {
-          if (mounted) fetchPollResults();
-        }, 3000);
+    // Setup fallback polling only if socket fails to connect
+    const fallbackPolling = setInterval(() => {
+      if (!socketConnected && mountedRef.current) {
+        console.log('⏰ Fallback polling - fetching results');
+        fetchPollResults();
       }
-    };
+    }, 5000);
 
-    setupConnection();
+    pollIntervalRef.current = fallbackPolling;
 
+    // Cleanup function
     return () => {
-      mounted = false;
       console.log('🧹 Cleaning up socket connection');
+      mountedRef.current = false;
       
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      if (socket) {
+        socket.disconnect();
       }
       
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
+      if (fallbackPolling) {
+        clearInterval(fallbackPolling);
       }
       
       setSocketConnected(false);
     };
-  }, [poll.code, fetchPollResults, toast, socketConnected]);
+  }, [poll.code]); // Only depend on poll.code, not on functions
 
   const copyPollCode = async () => {
     try {
