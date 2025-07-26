@@ -37,6 +37,9 @@ export const pollAPI = {
   getPollByCode: (code: string) =>
     api.get(`/api/poll/${code}`),
   
+  getPollResults: (code: string) =>
+    api.get(`/api/poll/results/${code}`),
+  
   vote: (code: string, optionIndex: number, fingerprint: string) =>
     api.post('/api/poll/vote', { code, optionIndex, fingerprint }),
 };

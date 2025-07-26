@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Users, Copy, Check } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { socketService } from '@/services/socket';
+import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { io, Socket } from 'socket.io-client';
 
 interface Poll {
   _id: string;
@@ -16,6 +17,14 @@ interface Poll {
   votes: number[];
 }
 
+interface PollResults {
+  question: string;
+  results: Array<{
+    option: string;
+    votes: number;
+  }>;
+}
+
 interface LivePollViewProps {
   poll: Poll;
   onBack: () => void;
@@ -24,66 +33,92 @@ interface LivePollViewProps {
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
-  const [pollData, setPollData] = useState<Poll>(poll);
+  const [pollResults, setPollResults] = useState<PollResults>({
+    question: poll.question,
+    results: poll.options.map((option, index) => ({
+      option,
+      votes: poll.votes[index] || 0
+    }))
+  });
   const [copied, setCopied] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    let mounted = true;
+    let socket: Socket | null = null;
 
-    const setupSocket = async () => {
+    const setupSocketAndFetchResults = async () => {
       try {
         console.log('Setting up socket connection for poll:', poll.code);
-        console.log('Initial poll data:', poll);
         
-        // Set initial poll data
-        setPollData(poll);
+        // Initialize socket connection
+        socket = io('http://localhost:9595');
         
-        // Connect to socket
-        const socket = await socketService.connect();
-        
-        if (!mounted) return;
-        
-        setSocketConnected(true);
-        
-        // Set up vote update listener
-        await socketService.onVoteUpdate((updatedPoll) => {
-          console.log('Vote update received:', updatedPoll);
-          if (updatedPoll.code === poll.code && mounted) {
-            console.log('Updating poll data from:', pollData, 'to:', updatedPoll);
-            setPollData(updatedPoll);
-          }
+        socket.on('connect', () => {
+          console.log('Socket connected successfully');
+          setSocketConnected(true);
+          
+          // Join the poll room
+          console.log('Joining poll room:', poll.code);
+          socket?.emit('join_poll', poll.code);
         });
-        
-        // Join the poll room
-        await socketService.joinPoll(poll.code);
-        
-      } catch (error) {
-        console.error('Failed to setup socket:', error);
-        if (mounted) {
+
+        socket.on('disconnect', () => {
+          console.log('Socket disconnected');
+          setSocketConnected(false);
+        });
+
+        socket.on('connect_error', (error) => {
+          console.error('Socket connection error:', error);
           toast({
             title: "Connection Error",
             description: "Failed to connect to live updates",
             variant: "destructive",
           });
-        }
+        });
+
+        // Listen for poll updates
+        socket.on('poll_updated', async () => {
+          console.log('Poll update received, fetching latest results');
+          try {
+            const response = await pollAPI.getPollResults(poll.code);
+            console.log('Updated poll results:', response.data);
+            setPollResults(response.data);
+          } catch (error) {
+            console.error('Error fetching updated poll results:', error);
+          }
+        });
+
+        // Fetch initial results
+        const response = await pollAPI.getPollResults(poll.code);
+        console.log('Initial poll results:', response.data);
+        setPollResults(response.data);
+
+      } catch (error) {
+        console.error('Failed to setup socket or fetch results:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load live poll results",
+          variant: "destructive",
+        });
       }
     };
 
-    setupSocket();
+    setupSocketAndFetchResults();
 
+    // Cleanup function
     return () => {
-      mounted = false;
-      console.log('Cleaning up socket connection');
-      socketService.offVoteUpdate();
-      setSocketConnected(false);
+      if (socket) {
+        console.log('Cleaning up socket connection');
+        socket.disconnect();
+        setSocketConnected(false);
+      }
     };
   }, [poll.code, toast]);
 
   const copyPollCode = async () => {
     try {
-      await navigator.clipboard.writeText(pollData.code);
+      await navigator.clipboard.writeText(poll.code);
       setCopied(true);
       toast({
         title: "Copied!",
@@ -99,19 +134,16 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     }
   };
 
-  // Calculate total votes from current poll data
-  const totalVotes = pollData.votes.reduce((sum, count) => sum + count, 0);
+  // Calculate total votes from current poll results
+  const totalVotes = pollResults.results.reduce((sum, result) => sum + result.votes, 0);
 
-  // Prepare chart data using current poll data
-  const chartData = pollData.options.map((option, index) => {
-    const voteCount = pollData.votes[index] || 0;
-    return {
-      option: option.length > 20 ? option.substring(0, 20) + '...' : option,
-      fullOption: option,
-      votes: voteCount,
-      percentage: totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0
-    };
-  });
+  // Prepare chart data using current poll results
+  const chartData = pollResults.results.map((result, index) => ({
+    option: result.option.length > 20 ? result.option.substring(0, 20) + '...' : result.option,
+    fullOption: result.option,
+    votes: result.votes,
+    percentage: totalVotes > 0 ? Math.round((result.votes / totalVotes) * 100) : 0
+  }));
 
   const pieData = chartData.map((item, index) => ({
     name: item.fullOption,
@@ -134,7 +166,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
           </Button>
 
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-800">{pollData.question}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{pollResults.question}</h1>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-gray-600">Poll Code:</span>
               <Button
@@ -143,7 +175,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
                 onClick={copyPollCode}
                 className="bg-white/70 backdrop-blur-sm hover:bg-white/90"
               >
-                <span className="font-mono text-lg font-bold">{pollData.code}</span>
+                <span className="font-mono text-lg font-bold">{poll.code}</span>
                 {copied ? (
                   <Check className="h-4 w-4 ml-2 text-green-600" />
                 ) : (
@@ -264,7 +296,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
               {window.location.origin}/join
             </p>
             <p className="text-sm text-purple-600">
-              Ask them to enter poll code: <span className="font-bold">{pollData.code}</span>
+              Ask them to enter poll code: <span className="font-bold">{poll.code}</span>
             </p>
           </CardContent>
         </Card>
