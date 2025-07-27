@@ -32,7 +32,7 @@ export const pollAPI = {
     api.get('/api/poll/mypolls'),
   
   relaunch: (pollId: string) =>
-    api.post('/api/poll/relaunch', { pollId }),
+    api.post('/api/poll/relaunch', { pollId, resetVotes: true }),
   
   getPollByCode: (code: string) =>
     api.get(`/api/poll/${code}`),

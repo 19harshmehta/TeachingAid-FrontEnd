@@ -121,7 +121,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
       
       toast({
         title: "Poll Relaunched",
-        description: "The poll is now active again",
+        description: "The poll is now active again with votes reset",
       });
     } catch (error) {
       console.error('Error relaunching poll:', error);
@@ -246,140 +246,152 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
     percentage: totalVotes > 0 ? Math.round((result.votes / totalVotes) * 100) : 0
   }));
 
-  const pieData = chartData.map((item, index) => ({
+  const pieData = chartData.filter(item => item.votes > 0).map((item, index) => ({
     name: item.fullOption,
     value: item.votes,
-    color: COLORS[index % COLORS.length]
+    color: COLORS[index % COLORS.length],
+    percentage: item.percentage
   }));
 
   return (
     <div className="min-h-screen bg-gradient-main">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8 animate-fade-in">
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="text-purple-700 hover:text-purple-800"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
-          </Button>
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-lg px-4 py-2">
+                <Users className="h-5 w-5 text-purple-600" />
+                <span className="font-semibold text-purple-700">{totalVotes} participants</span>
+              </div>
+            </div>
+          </div>
 
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-800">{pollResults.question}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-sm text-gray-600">Poll Code:</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyPollCode}
-                className="bg-white/70 backdrop-blur-sm hover:bg-white/90"
-              >
-                <span className="font-mono text-lg font-bold">{currentPoll.code}</span>
-                {copied ? (
-                  <Check className="h-4 w-4 ml-2 text-green-600" />
+          {/* Poll Info Card */}
+          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="text-center mb-6">
+                <h1 className="text-2xl font-bold text-gray-800 mb-4">{pollResults.question}</h1>
+                
+                <div className="flex items-center justify-center gap-6 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-600">Poll Code:</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={copyPollCode}
+                      className="bg-white/70 backdrop-blur-sm hover:bg-white/90 font-mono text-lg font-bold"
+                    >
+                      {currentPoll.code}
+                      {copied ? (
+                        <Check className="h-4 w-4 ml-2 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4 ml-2" />
+                      )}
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-600">Status:</span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      currentPoll.isActive 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {currentPoll.isActive ? 'Active' : 'Closed'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-center gap-6 text-sm text-gray-600">
+                  <div className="flex items-center gap-2">
+                    {socketConnected ? (
+                      <>
+                        <Wifi className="h-4 w-4 text-green-600" />
+                        <span className="text-green-600">Live Connected</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="h-4 w-4 text-orange-500" />
+                        <span className="text-orange-500">Polling Mode</span>
+                      </>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={manualRefresh}
+                    disabled={isRefreshing}
+                    className="h-8 px-3 text-sm"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                  
+                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center gap-4">
+                <Button
+                  onClick={() => setShowQRModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+                >
+                  <QrCode className="h-4 w-4 mr-2" />
+                  Show QR Code
+                </Button>
+                
+                {currentPoll.isActive ? (
+                  <Button
+                    onClick={handleClosePoll}
+                    disabled={isClosing}
+                    variant="destructive"
+                  >
+                    {isClosing ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Closing...
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Close Poll
+                      </>
+                    )}
+                  </Button>
                 ) : (
-                  <Copy className="h-4 w-4 ml-2" />
+                  <Button
+                    onClick={handleRelaunchPoll}
+                    disabled={isRelaunching}
+                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                  >
+                    {isRelaunching ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Relaunching...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Relaunch Poll
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
-            </div>
-            
-            {/* Status Badge */}
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                currentPoll.isActive 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {currentPoll.isActive ? 'Active' : 'Closed'}
-              </span>
-            </div>
-            
-            {/* Connection Status */}
-            <div className="flex items-center justify-center gap-4 mt-2">
-              {socketConnected ? (
-                <div className="flex items-center gap-2">
-                  <Wifi className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-green-600">Live Connected</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <WifiOff className="h-4 w-4 text-orange-500" />
-                  <span className="text-xs text-orange-500">Polling Mode</span>
-                </div>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={manualRefresh}
-                disabled={isRefreshing}
-                className="h-6 px-2 text-xs"
-              >
-                <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-500 mt-1">
-              Last updated: {lastUpdate.toLocaleTimeString()}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-purple-700">
-            <Users className="h-5 w-5" />
-            <span className="font-semibold">{totalVotes} votes</span>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-center gap-4 mb-8">
-          <Button
-            onClick={() => setShowQRModal(true)}
-            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-          >
-            <QrCode className="h-4 w-4 mr-2" />
-            Show QR Code
-          </Button>
-          
-          {currentPoll.isActive ? (
-            <Button
-              onClick={handleClosePoll}
-              disabled={isClosing}
-              variant="destructive"
-            >
-              {isClosing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Closing...
-                </>
-              ) : (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Close Poll
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleRelaunchPoll}
-              disabled={isRelaunching}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-            >
-              {isRelaunching ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Relaunching...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Relaunch Poll
-                </>
-              )}
-            </Button>
-          )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Poll Closed Message */}
@@ -434,24 +446,34 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
               <CardTitle className="text-center">Live Results - Pie Chart</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percentage }) => `${percentage}%`}
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name) => [value, 'Votes']} />
-                </PieChart>
-              </ResponsiveContainer>
+              {totalVotes > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ percentage }) => `${percentage}%`}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [value, 'Votes']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <Users className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                    <p>No votes yet</p>
+                    <p className="text-sm">Results will appear here once voting begins</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
