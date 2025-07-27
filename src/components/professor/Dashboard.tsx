@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +9,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
 import QRCodeModal from './QRCodeModal';
+import PollsSearchFilter from './PollsSearchFilter';
 
 interface Poll {
   _id: string;
@@ -30,6 +30,8 @@ const Dashboard = () => {
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
 
   useEffect(() => {
     fetchPolls();
@@ -126,6 +128,33 @@ const Dashboard = () => {
       poll._id === updatedPoll._id ? updatedPoll : poll
     ));
   };
+
+  const filteredAndSortedPolls = useMemo(() => {
+    let filtered = safePollsArray.filter(poll =>
+      poll.question.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'active':
+          if (a.isActive && !b.isActive) return -1;
+          if (!a.isActive && b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'closed':
+          if (!a.isActive && b.isActive) return -1;
+          if (a.isActive && !b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [safePollsArray, searchTerm, sortBy]);
 
   if (loading) {
     return (
@@ -234,10 +263,19 @@ const Dashboard = () => {
             <CardTitle className="text-xl font-semibold">Your Polls</CardTitle>
           </CardHeader>
           <CardContent>
-            {safePollsArray.length === 0 ? (
+            <PollsSearchFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+            />
+            
+            {filteredAndSortedPolls.length === 0 ? (
               <div className="text-center py-12">
                 <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">No polls created yet</p>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm ? 'No polls found matching your search' : 'No polls created yet'}
+                </p>
                 <Button
                   onClick={() => setShowCreateModal(true)}
                   className="bg-gradient-to-r from-purple-600 to-pink-600"
@@ -247,7 +285,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {safePollsArray.map((poll) => {
+                {filteredAndSortedPolls.map((poll) => {
                   const pollVotes = Array.isArray(poll.votes) ? poll.votes : [];
                   const totalVotes = pollVotes.reduce((sum, count) => sum + count, 0);
                   

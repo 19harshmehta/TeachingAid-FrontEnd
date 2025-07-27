@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -16,6 +16,31 @@ import VotingPage from "./components/student/VotingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
+
+// Component to handle dynamic page titles
+const PageTitleHandler = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
+  
+  React.useEffect(() => {
+    const titles: { [key: string]: string } = {
+      '/': 'PollSync - Real-time Polling Made Easy',
+      '/login': 'Login - PollSync',
+      '/register': 'Register - PollSync',
+      '/dashboard': 'Dashboard - PollSync',
+      '/join': 'Join Poll - PollSync',
+    };
+    
+    let title = titles[location.pathname];
+    
+    if (location.pathname.startsWith('/poll/')) {
+      title = 'Vote - PollSync';
+    }
+    
+    document.title = title || 'PollSync';
+  }, [location.pathname]);
+  
+  return <>{children}</>;
+};
 
 const App = () => {
   // Remove any Lovable branding on app load
@@ -42,22 +67,24 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/join" element={<JoinPollPage />} />
-              <Route path="/poll/:code" element={<VotingPage />} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <PageTitleHandler>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/join" element={<JoinPollPage />} />
+                <Route path="/poll/:code" element={<VotingPage />} />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </PageTitleHandler>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
