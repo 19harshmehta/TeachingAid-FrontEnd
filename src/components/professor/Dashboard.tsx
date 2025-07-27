@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI } from '@/services/api';
@@ -32,6 +33,9 @@ const Dashboard = () => {
   const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+
+  // Ensure polls is always an array
+  const safePollsArray = Array.isArray(polls) ? polls : [];
 
   useEffect(() => {
     fetchPolls();
@@ -176,8 +180,6 @@ const Dashboard = () => {
       />
     );
   }
-
-  const safePollsArray = Array.isArray(polls) ? polls : [];
 
   return (
     <div className="min-h-screen bg-gradient-main">
