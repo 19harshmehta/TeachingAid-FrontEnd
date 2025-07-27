@@ -5,9 +5,11 @@ import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, BarChart3, LogOut, Eye, Play } from 'lucide-react';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
+import QRCodeModal from './QRCodeModal';
 
 interface Poll {
   _id: string;
@@ -16,7 +18,7 @@ interface Poll {
   code: string;
   isActive: boolean;
   createdAt: string;
-  votes: number[]; // Changed from any[] to number[]
+  votes: number[];
 }
 
 const Dashboard = () => {
@@ -26,6 +28,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
 
   useEffect(() => {
     fetchPolls();
@@ -37,7 +41,6 @@ const Dashboard = () => {
       const response = await pollAPI.getMyPolls();
       console.log('API Response:', response);
       
-      // Ensure we have an array - handle different response structures
       let pollsData = [];
       if (Array.isArray(response.data)) {
         pollsData = response.data;
@@ -52,7 +55,6 @@ const Dashboard = () => {
       
       console.log('Processed polls data:', pollsData);
       
-      // Ensure votes is always an array of numbers
       const processedPolls = pollsData.map(poll => ({
         ...poll,
         votes: Array.isArray(poll.votes) ? poll.votes : []
@@ -92,8 +94,37 @@ const Dashboard = () => {
     }
   };
 
+  const handleClosePoll = async (pollCode: string) => {
+    try {
+      await pollAPI.closePoll(pollCode);
+      toast({
+        title: "Poll Closed",
+        description: "Poll has been closed successfully",
+      });
+      fetchPolls();
+    } catch (error) {
+      console.error('Error closing poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to close poll",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewLive = (poll: Poll) => {
     setActivePoll(poll);
+  };
+
+  const handleShowQR = (pollCode: string) => {
+    setSelectedPollForQR(pollCode);
+    setShowQRModal(true);
+  };
+
+  const handlePollUpdated = (updatedPoll: Poll) => {
+    setPolls(polls.map(poll => 
+      poll._id === updatedPoll._id ? updatedPoll : poll
+    ));
   };
 
   if (loading) {
@@ -111,12 +142,12 @@ const Dashboard = () => {
     return (
       <LivePollView 
         poll={activePoll} 
-        onBack={() => setActivePoll(null)} 
+        onBack={() => setActivePoll(null)}
+        onPollUpdated={handlePollUpdated}
       />
     );
   }
 
-  // Ensure polls is always an array before rendering
   const safePollsArray = Array.isArray(polls) ? polls : [];
 
   return (
@@ -225,8 +256,17 @@ const Dashboard = () => {
                       key={poll._id} 
                       className="flex items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors"
                     >
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{poll.question}</h3>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-800">{poll.question}</h3>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            poll.isActive 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {poll.isActive ? 'Active' : 'Closed'}
+                          </span>
+                        </div>
                         <p className="text-sm text-gray-600">
                           Code: {poll.code} • {poll.options.length} options • {totalVotes} votes
                         </p>
@@ -236,18 +276,35 @@ const Dashboard = () => {
                       </div>
                       
                       <div className="flex gap-2">
-                        {poll.isActive && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleViewLive(poll)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View Live
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleShowQR(poll.code)}
+                          className="bg-white/70 backdrop-blur-sm"
+                        >
+                          <QrCode className="h-4 w-4" />
+                        </Button>
                         
-                        {!poll.isActive && (
+                        {poll.isActive ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleViewLive(poll)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View Live
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleClosePoll(poll.code)}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Close
+                            </Button>
+                          </>
+                        ) : (
                           <Button
                             size="sm"
                             onClick={() => handleRelaunch(poll._id)}
@@ -274,6 +331,12 @@ const Dashboard = () => {
           fetchPolls();
           setShowCreateModal(false);
         }}
+      />
+
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        pollCode={selectedPollForQR}
       />
     </div>
   );

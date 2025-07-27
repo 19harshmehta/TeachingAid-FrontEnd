@@ -42,6 +42,9 @@ export const pollAPI = {
   
   vote: (code: string, optionIndex: number, fingerprint: string) =>
     api.post('/api/poll/vote', { code, optionIndex, fingerprint }),
+  
+  closePoll: (code: string) =>
+    api.put(`/api/poll/${code}/status`, { isActive: false }),
 };
 
 export default api;

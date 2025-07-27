@@ -2,11 +2,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff, QrCode, X, Play } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { QRCodeSVG } from 'qrcode.react';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { io, Socket } from 'socket.io-client';
+import QRCodeModal from './QRCodeModal';
 
 interface Poll {
   _id: string;
@@ -28,11 +30,13 @@ interface PollResults {
 interface LivePollViewProps {
   poll: Poll;
   onBack: () => void;
+  onPollUpdated: (updatedPoll: Poll) => void;
 }
 
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
+const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated }) => {
+  const [currentPoll, setCurrentPoll] = useState<Poll>(poll);
   const [pollResults, setPollResults] = useState<PollResults>({
     question: poll.question,
     results: poll.options.map((option, index) => ({
@@ -43,20 +47,21 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
   const [copied, setCopied] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isRelaunching, setIsRelaunching] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const { toast } = useToast();
   
   const socketRef = useRef<Socket | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  // Stable function that doesn't change between renders
   const fetchPollResults = useCallback(async () => {
     if (!mountedRef.current) return;
     
     try {
-      console.log('🔄 Fetching poll results for code:', poll.code);
-      const response = await pollAPI.getPollResults(poll.code);
+      console.log('🔄 Fetching poll results for code:', currentPoll.code);
+      const response = await pollAPI.getPollResults(currentPoll.code);
       console.log('📊 Poll results received:', response.data);
       
       if (!mountedRef.current) return;
@@ -70,20 +75,11 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
         setPollResults(resultsData);
         setLastUpdate(new Date());
         console.log('✅ Poll results updated successfully');
-      } else {
-        console.warn('⚠️ Unexpected response structure:', resultsData);
       }
     } catch (error) {
       console.error('❌ Error fetching poll results:', error);
-      if (mountedRef.current) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch latest poll results",
-          variant: "destructive",
-        });
-      }
     }
-  }, [poll.code, toast]);
+  }, [currentPoll.code]);
 
   const manualRefresh = async () => {
     setIsRefreshing(true);
@@ -91,13 +87,59 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // Initialize socket connection once
+  const handleClosePoll = async () => {
+    setIsClosing(true);
+    try {
+      await pollAPI.closePoll(currentPoll.code);
+      const updatedPoll = { ...currentPoll, isActive: false };
+      setCurrentPoll(updatedPoll);
+      onPollUpdated(updatedPoll);
+      
+      toast({
+        title: "Poll Closed",
+        description: "The poll has been closed successfully",
+      });
+    } catch (error) {
+      console.error('Error closing poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to close the poll",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const handleRelaunchPoll = async () => {
+    setIsRelaunching(true);
+    try {
+      await pollAPI.relaunch(currentPoll._id);
+      const updatedPoll = { ...currentPoll, isActive: true };
+      setCurrentPoll(updatedPoll);
+      onPollUpdated(updatedPoll);
+      
+      toast({
+        title: "Poll Relaunched",
+        description: "The poll is now active again",
+      });
+    } catch (error) {
+      console.error('Error relaunching poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to relaunch the poll",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRelaunching(false);
+    }
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     
-    console.log('🚀 Initializing socket connection for poll:', poll.code);
+    console.log('🚀 Initializing socket connection for poll:', currentPoll.code);
     
-    // Create socket connection
     const socket = io('http://localhost:9595', {
       transports: ['websocket'],
       timeout: 10000,
@@ -108,15 +150,13 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
 
     socketRef.current = socket;
 
-    // Set up event listeners
     socket.on('connect', () => {
       if (!mountedRef.current) return;
       console.log('🔗 Socket connected successfully');
       setSocketConnected(true);
       
-      // Join the poll room
-      console.log('🏠 Joining poll room:', poll.code);
-      socket.emit('join_poll', poll.code);
+      console.log('🏠 Joining poll room:', currentPoll.code);
+      socket.emit('join_poll', currentPoll.code);
       
       toast({
         title: "Live Connection Active",
@@ -136,7 +176,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       setSocketConnected(false);
     });
 
-    // Listen for poll updates
     socket.on('poll_updated', () => {
       if (!mountedRef.current) return;
       console.log('📡 Received poll_updated event');
@@ -155,10 +194,8 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       fetchPollResults();
     });
 
-    // Fetch initial results
     fetchPollResults();
 
-    // Setup fallback polling only if socket fails to connect
     const fallbackPolling = setInterval(() => {
       if (!socketConnected && mountedRef.current) {
         console.log('⏰ Fallback polling - fetching results');
@@ -166,9 +203,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       }
     }, 5000);
 
-    pollIntervalRef.current = fallbackPolling;
-
-    // Cleanup function
     return () => {
       console.log('🧹 Cleaning up socket connection');
       mountedRef.current = false;
@@ -183,11 +217,11 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
       
       setSocketConnected(false);
     };
-  }, [poll.code]); // Only depend on poll.code, not on functions
+  }, [currentPoll.code, fetchPollResults]);
 
   const copyPollCode = async () => {
     try {
-      await navigator.clipboard.writeText(poll.code);
+      await navigator.clipboard.writeText(currentPoll.code);
       setCopied(true);
       toast({
         title: "Copied!",
@@ -203,10 +237,8 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
     }
   };
 
-  // Calculate total votes from current poll results
   const totalVotes = pollResults.results.reduce((sum, result) => sum + result.votes, 0);
 
-  // Prepare chart data using current poll results
   const chartData = pollResults.results.map((result, index) => ({
     option: result.option.length > 20 ? result.option.substring(0, 20) + '...' : result.option,
     fullOption: result.option,
@@ -244,13 +276,24 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
                 onClick={copyPollCode}
                 className="bg-white/70 backdrop-blur-sm hover:bg-white/90"
               >
-                <span className="font-mono text-lg font-bold">{poll.code}</span>
+                <span className="font-mono text-lg font-bold">{currentPoll.code}</span>
                 {copied ? (
                   <Check className="h-4 w-4 ml-2 text-green-600" />
                 ) : (
                   <Copy className="h-4 w-4 ml-2" />
                 )}
               </Button>
+            </div>
+            
+            {/* Status Badge */}
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                currentPoll.isActive 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {currentPoll.isActive ? 'Active' : 'Closed'}
+              </span>
             </div>
             
             {/* Connection Status */}
@@ -289,6 +332,69 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
             <span className="font-semibold">{totalVotes} votes</span>
           </div>
         </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-4 mb-8">
+          <Button
+            onClick={() => setShowQRModal(true)}
+            className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+          >
+            <QrCode className="h-4 w-4 mr-2" />
+            Show QR Code
+          </Button>
+          
+          {currentPoll.isActive ? (
+            <Button
+              onClick={handleClosePoll}
+              disabled={isClosing}
+              variant="destructive"
+            >
+              {isClosing ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Closing...
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4 mr-2" />
+                  Close Poll
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleRelaunchPoll}
+              disabled={isRelaunching}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            >
+              {isRelaunching ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Relaunching...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4 mr-2" />
+                  Relaunch Poll
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Poll Closed Message */}
+        {!currentPoll.isActive && (
+          <Card className="mb-8 bg-red-50/80 backdrop-blur-sm border-red-200 shadow-lg animate-fade-in">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2 text-red-800">
+                Poll Closed
+              </h3>
+              <p className="text-sm text-red-600">
+                This poll is no longer accepting votes. You can relaunch it to reactivate voting.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Charts */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
@@ -381,19 +487,48 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack }) => {
 
         {/* Instructions */}
         <Card className="mt-8 bg-gradient-to-r from-purple-100/80 to-pink-100/80 backdrop-blur-sm border-0 shadow-lg animate-fade-in">
-          <CardContent className="p-6 text-center">
-            <h3 className="text-lg font-semibold mb-2 text-purple-800">
-              Students can join at:
-            </h3>
-            <p className="text-xl font-mono font-bold text-purple-700 mb-2">
-              {window.location.origin}/join
-            </p>
-            <p className="text-sm text-purple-600">
-              Ask them to enter poll code: <span className="font-bold">{poll.code}</span>
-            </p>
+          <CardContent className="p-6">
+            <div className="grid md:grid-cols-2 gap-6 items-center">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-2 text-purple-800">
+                  Students can join at:
+                </h3>
+                <p className="text-xl font-mono font-bold text-purple-700 mb-2">
+                  {window.location.origin}/join
+                </p>
+                <p className="text-sm text-purple-600">
+                  Ask them to enter poll code: <span className="font-bold">{currentPoll.code}</span>
+                </p>
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold mb-4 text-purple-800">
+                  Or scan QR code:
+                </h3>
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => setShowQRModal(true)}
+                    className="bg-white p-3 rounded-lg shadow-md hover:shadow-lg transition-shadow"
+                  >
+                    <QRCodeSVG
+                      value={`https://preview--instant-pulse.lovable.app/poll/${currentPoll.code}`}
+                      size={120}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                    />
+                  </button>
+                </div>
+                <p className="text-xs text-purple-600 mt-2">Click to enlarge</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        pollCode={currentPoll.code}
+      />
     </div>
   );
 };

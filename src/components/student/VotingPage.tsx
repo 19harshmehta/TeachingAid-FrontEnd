@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Check, Users } from 'lucide-react';
+import { ArrowLeft, Check, Users, X } from 'lucide-react';
 import { pollAPI } from '@/services/api';
 import { getFingerprint } from '@/services/fingerprint';
 import { useToast } from '@/hooks/use-toast';
@@ -103,6 +103,31 @@ const VotingPage = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading poll...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show closed poll message
+  if (!poll.isActive) {
+    return (
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Closed</h2>
+            <p className="text-gray-600 mb-6">
+              This poll is no longer accepting votes. Please check with your instructor for more information.
+            </p>
+            <Button
+              onClick={() => navigate('/join')}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            >
+              Join Another Poll
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
