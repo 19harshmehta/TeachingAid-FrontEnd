@@ -140,7 +140,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
     
     console.log('🚀 Initializing socket connection for poll:', currentPoll.code);
     
-    const socket = io('http://localhost:9595', {
+    const socket = io('https://teachingaid-backend.onrender.com', {
       transports: ['websocket'],
       timeout: 10000,
       reconnection: true,
@@ -516,7 +516,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                   Students can join at:
                 </h3>
                 <p className="text-xl font-mono font-bold text-purple-700 mb-2">
-                  {window.location.origin}/join
+                  https://instant-pulse.vercel.app/join
                 </p>
                 <p className="text-sm text-purple-600">
                   Ask them to enter poll code: <span className="font-bold">{currentPoll.code}</span>
@@ -532,7 +532,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                     className="bg-white p-3 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                   >
                     <QRCodeSVG
-                      value={`https://preview--instant-pulse.lovable.app/poll/${currentPoll.code}`}
+                      value={`https://instant-pulse.vercel.app/poll/${currentPoll.code}`}
                       size={120}
                       bgColor="#ffffff"
                       fgColor="#000000"

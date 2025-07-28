@@ -12,7 +12,7 @@ interface QRCodeModalProps {
 }
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, pollCode }) => {
-  const qrUrl = `https://preview--instant-pulse.lovable.app/poll/${pollCode}`;
+  const qrUrl = `https://instant-pulse.vercel.app/poll/${pollCode}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -1,7 +1,6 @@
-
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:9595';
+const BASE_URL = 'https://teachingaid-backend.onrender.com';
 
 const api = axios.create({
   baseURL: BASE_URL,
