@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Check, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, Users, X, AlertCircle } from 'lucide-react';
 import { pollAPI } from '@/services/api';
 import { getFingerprint } from '@/services/fingerprint';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,8 @@ const VotingPage = () => {
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(!location.state?.poll);
+  const [error, setError] = useState<string | null>(null);
   const [fingerprint, setFingerprint] = useState<string>('');
 
   useEffect(() => {
@@ -52,21 +54,42 @@ const VotingPage = () => {
   };
 
   const fetchPoll = async () => {
-    if (!code) return;
+    if (!code) {
+      setError("Invalid poll code");
+      setInitialLoading(false);
+      return;
+    }
+    
+    setInitialLoading(true);
+    setError(null);
     
     try {
       console.log('Fetching poll with code:', code);
       const response = await pollAPI.getPollByCode(code);
       console.log('Poll fetched:', response.data);
       setPoll(response.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching poll:', error);
+      
+      let errorMessage = "This poll could not be found";
+      
+      if (error.response?.status === 404) {
+        errorMessage = "Poll not found. Please check the poll code and try again.";
+      } else if (error.response?.status === 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setError(errorMessage);
+      
       toast({
         title: "Poll Not Found",
-        description: "The poll code is invalid or the poll is no longer active",
+        description: errorMessage,
         variant: "destructive",
       });
-      navigate('/join');
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -96,13 +119,48 @@ const VotingPage = () => {
     }
   };
 
-  if (!poll) {
+  // Show loading state
+  if (initialLoading) {
     return (
       <div className="min-h-screen bg-gradient-main flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading poll...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || !poll) {
+    return (
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Not Found</h2>
+            <p className="text-gray-600 mb-6">
+              {error || "The poll you're looking for doesn't exist or has been removed."}
+            </p>
+            <div className="space-y-3">
+              <Button
+                onClick={() => fetchPoll()}
+                variant="outline"
+                className="w-full"
+              >
+                Try Again
+              </Button>
+              <Button
+                onClick={() => navigate('/join')}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                Join Another Poll
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -122,7 +180,7 @@ const VotingPage = () => {
             </p>
             <Button
               onClick={() => navigate('/join')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             >
               Join Another Poll
             </Button>
@@ -146,7 +204,7 @@ const VotingPage = () => {
             </p>
             <Button
               onClick={() => navigate('/join')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             >
               Join Another Poll
             </Button>
