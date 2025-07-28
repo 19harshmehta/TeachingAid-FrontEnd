@@ -31,9 +31,12 @@ const VotingPage = () => {
   const [fingerprint, setFingerprint] = useState<string>('');
 
   useEffect(() => {
+    console.log('VotingPage mounted with code:', code);
+    console.log('Location state:', location.state);
     initializeFingerprint();
     
     if (!poll && code) {
+      console.log('No poll in state, fetching poll with code:', code);
       fetchPoll();
     }
   }, [code, poll]);
@@ -55,21 +58,34 @@ const VotingPage = () => {
 
   const fetchPoll = async () => {
     if (!code) {
+      console.error('No poll code provided');
       setError("Invalid poll code");
       setInitialLoading(false);
       return;
     }
     
+    console.log('Starting poll fetch for code:', code);
     setInitialLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching poll with code:', code);
+      console.log('Making API call to fetch poll with code:', code);
       const response = await pollAPI.getPollByCode(code);
-      console.log('Poll fetched:', response.data);
-      setPoll(response.data);
+      console.log('Poll API response:', response);
+      console.log('Poll data received:', response.data);
+      
+      if (response.data) {
+        setPoll(response.data);
+        console.log('Poll set successfully:', response.data);
+      } else {
+        console.error('No data in response');
+        setError("Poll data not found");
+      }
     } catch (error: any) {
       console.error('Error fetching poll:', error);
+      console.error('Error response:', error.response);
+      console.error('Error status:', error.response?.status);
+      console.error('Error data:', error.response?.data);
       
       let errorMessage = "This poll could not be found";
       
@@ -79,6 +95,8 @@ const VotingPage = () => {
         errorMessage = "Server error. Please try again later.";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       setError(errorMessage);
@@ -126,6 +144,7 @@ const VotingPage = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading poll...</p>
+          <p className="text-sm text-gray-500 mt-2">Code: {code}</p>
         </div>
       </div>
     );
@@ -141,9 +160,10 @@ const VotingPage = () => {
               <AlertCircle className="h-8 w-8 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Not Found</h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-2">
               {error || "The poll you're looking for doesn't exist or has been removed."}
             </p>
+            <p className="text-sm text-gray-500 mb-6">Poll Code: {code}</p>
             <div className="space-y-3">
               <Button
                 onClick={() => fetchPoll()}
