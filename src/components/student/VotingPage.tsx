@@ -14,6 +14,10 @@ interface Poll {
   options: string[];
   code: string;
   isActive: boolean;
+  createdBy?: {
+    name: string;
+    email: string;
+  };
 }
 
 const VotingPage = () => {
@@ -144,7 +148,7 @@ const VotingPage = () => {
   // Show loading state
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-gradient-main flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading poll...</p>
@@ -159,12 +163,12 @@ const VotingPage = () => {
     return (
       <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-8 text-center">
+          <CardContent className="p-6 sm:p-8 text-center">
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Not Found</h2>
-            <p className="text-gray-600 mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Poll Not Found</h2>
+            <p className="text-gray-600 mb-2 text-sm sm:text-base">
               {error || "The poll you're looking for doesn't exist or has been removed."}
             </p>
             <p className="text-sm text-gray-500 mb-6">Poll Code: {code}</p>
@@ -197,13 +201,13 @@ const VotingPage = () => {
     return (
       <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-8 text-center">
+          <CardContent className="p-6 sm:p-8 text-center">
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <X className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Poll Closed</h2>
-            <p className="text-gray-600 mb-6">
-              This poll is no longer accepting votes. Please check with your instructor for more information.
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Poll Closed</h2>
+            <p className="text-gray-600 mb-6 text-sm sm:text-base">
+              This poll is no longer accepting votes. Please check with the poll creator for more information.
             </p>
             <Button
               onClick={() => navigate('/join')}
@@ -221,12 +225,12 @@ const VotingPage = () => {
     return (
       <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-8 text-center">
+          <CardContent className="p-6 sm:p-8 text-center">
             <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Vote Recorded!</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Vote Recorded!</h2>
+            <p className="text-gray-600 mb-6 text-sm sm:text-base">
               Thank you for participating in this poll. Your vote has been recorded.
             </p>
             <Button
@@ -255,33 +259,43 @@ const VotingPage = () => {
 
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-2">
               <span className="text-sm text-gray-600">Poll Code:</span>
               <span className="font-mono text-lg font-bold text-purple-600">{poll.code}</span>
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-800 mb-2">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
               {poll.question}
             </CardTitle>
-            <div className="flex items-center justify-center gap-2 text-purple-700">
-              <Users className="h-4 w-4" />
-              <span className="text-sm">Live Poll</span>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-purple-700">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="text-sm">Live Poll</span>
+              </div>
+              {poll.createdBy && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">•</span>
+                  <span className="text-sm text-gray-600">
+                    Created by {poll.createdBy.name}
+                  </span>
+                </div>
+              )}
             </div>
           </CardHeader>
           
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="space-y-3 mb-6">
               {poll.options.map((option, index) => (
                 <button
                   key={index}
                   onClick={() => setSelectedOption(index)}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
+                  className={`w-full p-3 sm:p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                     selectedOption === index
                       ? 'border-purple-500 bg-purple-50 text-purple-700'
                       : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{option}</span>
+                    <span className="font-medium text-sm sm:text-base">{option}</span>
                     {selectedOption === index && (
                       <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
                         <Check className="h-3 w-3 text-white" />

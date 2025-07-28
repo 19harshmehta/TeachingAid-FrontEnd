@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +11,7 @@ import LoginPage from "./components/auth/LoginPage";
 import RegisterPage from "./components/auth/RegisterPage";
 import Dashboard from "./components/professor/Dashboard";
 import JoinPollPage from "./components/student/JoinPollPage";
+import JoinPollWithCode from "./components/student/JoinPollWithCode";
 import VotingPage from "./components/student/VotingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -73,6 +73,7 @@ const App = () => {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/join" element={<JoinPollPage />} />
+                <Route path="/join/:code" element={<JoinPollWithCode />} />
                 <Route path="/poll/:code" element={<VotingPage />} />
                 <Route 
                   path="/dashboard" 

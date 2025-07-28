@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,11 +9,18 @@ import { ArrowLeft, Hash } from 'lucide-react';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
-const JoinPollPage = () => {
+const JoinPollWithCode = () => {
+  const { code } = useParams<{ code: string }>();
   const [pollCode, setPollCode] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (code) {
+      setPollCode(code.toUpperCase());
+    }
+  }, [code]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,9 +76,11 @@ const JoinPollPage = () => {
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Join a Poll
+              Join Poll
             </CardTitle>
-            <p className="text-gray-600">Enter the poll code provided by the poll creator</p>
+            <p className="text-gray-600">
+              {code ? 'Review and join this poll' : 'Enter the poll code to join'}
+            </p>
           </CardHeader>
           
           <CardContent>
@@ -127,4 +137,4 @@ const JoinPollPage = () => {
   );
 };
 
-export default JoinPollPage;
+export default JoinPollWithCode;

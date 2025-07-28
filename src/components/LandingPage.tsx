@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,7 +18,7 @@ const LandingPage = () => {
 
       <div className="relative z-10 container mx-auto px-4 py-8">
         {/* Header */}
-        <header className="flex justify-between items-center mb-16 animate-fade-in">
+        <header className="flex flex-col sm:flex-row justify-between items-center mb-16 animate-fade-in gap-4">
           <div className="flex items-center space-x-2">
             <BarChart3 className="h-8 w-8 text-purple-600" />
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
@@ -31,13 +30,13 @@ const LandingPage = () => {
             onClick={() => navigate('/login')}
             className="bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
           >
-            Professor Login
+            Login to Create Poll
           </Button>
         </header>
 
         {/* Hero Section */}
         <div className="text-center mb-20 animate-slide-up">
-          <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent leading-tight">
             Create polls.
             <br />
             Get real-time answers.
@@ -45,34 +44,34 @@ const LandingPage = () => {
             <span className="text-violet-600">Instantly.</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-gray-700 mb-12 max-w-3xl mx-auto">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-12 max-w-3xl mx-auto px-4">
             Engage your audience with interactive polls and see results update in real-time. 
             Perfect for classrooms, presentations, and events.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4">
             <Button 
               size="lg" 
               onClick={() => navigate('/login')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
             >
-              Login as Professor
+              Login to Create Poll
             </Button>
             
             <Button 
               size="lg" 
               variant="outline"
               onClick={() => navigate('/join')}
-              className="bg-white/70 backdrop-blur-sm hover:bg-white/90 border-purple-200 text-purple-700 px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+              className="w-full sm:w-auto bg-white/70 backdrop-blur-sm hover:bg-white/90 border-purple-200 text-purple-700 px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
             >
-              Join Poll as Student
+              Join a Poll
             </Button>
           </div>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <Card className="p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in">
+        <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-8 mb-16 px-4">
+          <Card className="p-6 sm:p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in">
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Zap className="h-8 w-8 text-white" />
@@ -84,19 +83,19 @@ const LandingPage = () => {
             </div>
           </Card>
 
-          <Card className="p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <Card className="p-6 sm:p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold mb-3 text-gray-800">Easy Participation</h3>
               <p className="text-gray-600">
-                Students join with simple poll codes. No accounts needed, just instant participation.
+                Users join with simple poll codes. No accounts needed, just instant participation.
               </p>
             </div>
           </Card>
 
-          <Card className="p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <Card className="p-6 sm:p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="h-8 w-8 text-white" />
@@ -110,17 +109,17 @@ const LandingPage = () => {
         </div>
 
         {/* CTA Section */}
-        <div className="text-center bg-white/50 backdrop-blur-sm rounded-3xl p-12 animate-fade-in">
-          <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+        <div className="text-center bg-white/50 backdrop-blur-sm rounded-3xl p-8 sm:p-12 mx-4 animate-fade-in">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Ready to engage your audience?
           </h2>
-          <p className="text-gray-700 mb-8 text-lg">
-            Join thousands of educators already using PollSync to make their sessions more interactive.
+          <p className="text-gray-700 mb-8 text-base sm:text-lg">
+            Join thousands of users already using PollSync to make their sessions more interactive.
           </p>
           <Button 
             size="lg"
             onClick={() => navigate('/register')}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+            className="w-full sm:w-auto bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
           >
             Get Started Free
           </Button>

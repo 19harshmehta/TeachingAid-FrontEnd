@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,13 +11,13 @@ interface QRCodeModalProps {
 }
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, pollCode }) => {
-  const qrUrl = `https://instant-pulse.vercel.app/poll/${pollCode}`;
+  const qrUrl = `https://instant-pulse.vercel.app/join/${pollCode}`;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center">Scan to Vote</DialogTitle>
+          <DialogTitle className="text-center">Scan to Join Poll</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col items-center space-y-4 p-6">
           <div className="bg-white p-4 rounded-lg shadow-lg">
@@ -32,7 +31,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, pollCode }) 
           </div>
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-2">
-              Students can scan this QR code to vote
+              Scan this QR code to join the poll
             </p>
             <p className="text-xs text-gray-500 font-mono">
               Poll Code: {pollCode}
