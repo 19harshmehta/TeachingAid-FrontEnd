@@ -70,7 +70,9 @@ const VotingPage = () => {
     
     try {
       console.log('Making API call to fetch poll with code:', code);
-      const response = await pollAPI.getPollByCode(code);
+      // Ensure the code is properly formatted (uppercase and trimmed)
+      const cleanCode = code.trim().toUpperCase();
+      const response = await pollAPI.getPollByCode(cleanCode);
       console.log('Poll API response:', response);
       console.log('Poll data received:', response.data);
       
@@ -90,13 +92,15 @@ const VotingPage = () => {
       let errorMessage = "This poll could not be found";
       
       if (error.response?.status === 404) {
-        errorMessage = "Poll not found. Please check the poll code and try again.";
+        errorMessage = `Poll with code "${code}" not found. Please check the poll code and try again.`;
       } else if (error.response?.status === 500) {
         errorMessage = "Server error. Please try again later.";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
+      } else if (error.code === 'NETWORK_ERROR') {
+        errorMessage = "Network error. Please check your connection and try again.";
       }
       
       setError(errorMessage);
@@ -166,7 +170,10 @@ const VotingPage = () => {
             <p className="text-sm text-gray-500 mb-6">Poll Code: {code}</p>
             <div className="space-y-3">
               <Button
-                onClick={() => fetchPoll()}
+                onClick={() => {
+                  setError(null);
+                  fetchPoll();
+                }}
                 variant="outline"
                 className="w-full"
               >
