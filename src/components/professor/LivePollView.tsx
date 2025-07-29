@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff, QrCode, X, Play } from 'lucide-react';
@@ -36,6 +37,7 @@ interface LivePollViewProps {
 const COLORS = ['#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
 const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated }) => {
+  const navigate = useNavigate();
   const [currentPoll, setCurrentPoll] = useState<Poll>(poll);
   const [pollResults, setPollResults] = useState<PollResults>({
     question: poll.question,
@@ -55,6 +57,24 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
   
   const socketRef = useRef<Socket | null>(null);
   const mountedRef = useRef(true);
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
+      onBack();
+    };
+
+    // Push current state to history
+    window.history.pushState({ page: 'livePoll' }, '', window.location.pathname);
+    
+    // Listen for back button
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onBack]);
 
   const fetchPollResults = useCallback(async () => {
     if (!mountedRef.current) return;
@@ -532,7 +552,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                     className="bg-white p-3 rounded-lg shadow-md hover:shadow-lg transition-shadow"
                   >
                     <QRCodeSVG
-                      value={`https://instant-pulse.vercel.app/poll/${currentPoll.code}`}
+                      value={`https://instant-pulse.vercel.app/join/${currentPoll.code}`}
                       size={120}
                       bgColor="#ffffff"
                       fgColor="#000000"
