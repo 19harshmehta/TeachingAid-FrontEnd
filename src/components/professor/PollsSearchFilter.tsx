@@ -18,7 +18,7 @@ const PollsSearchFilter = ({
   onSortChange 
 }: PollsSearchFilterProps) => {
   return (
-    <div className="flex flex-col sm:flex-row gap-4 mb-6">
+    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input
@@ -26,14 +26,14 @@ const PollsSearchFilter = ({
           placeholder="Search polls by question..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 bg-white/70 backdrop-blur-sm border-0 shadow-lg"
+          className="pl-10 bg-white/70 backdrop-blur-sm border-0 shadow-lg text-sm md:text-base"
         />
       </div>
       
       <div className="flex items-center gap-2">
         <Filter className="h-4 w-4 text-gray-600" />
         <Select value={sortBy} onValueChange={onSortChange}>
-          <SelectTrigger className="w-40 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
+          <SelectTrigger className="w-full sm:w-40 bg-white/70 backdrop-blur-sm border-0 shadow-lg text-sm md:text-base">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
