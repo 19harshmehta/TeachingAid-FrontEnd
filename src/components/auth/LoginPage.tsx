@@ -58,7 +58,7 @@ const LoginPage = () => {
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Professor Login
+              PollSync Login
             </CardTitle>
             <p className="text-gray-600">Access your polling dashboard</p>
           </CardHeader>

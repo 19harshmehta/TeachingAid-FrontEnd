@@ -43,7 +43,7 @@ const PageTitleHandler = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  // Remove any Lovable branding on app load
+  
   React.useEffect(() => {
     const removeLovableBranding = () => {
       const lovableElements = document.querySelectorAll('[data-lovable], [class*="lovable"], [id*="lovable"]');
