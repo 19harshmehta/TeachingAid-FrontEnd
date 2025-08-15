@@ -36,12 +36,14 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll: initialPoll, onBack, 
 
   // Handle browser back button
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (event: PopStateEvent) => {
+      event.preventDefault();
       onBack();
     };
 
+    // Push a new state to prevent default back behavior
+    window.history.pushState({ page: 'live-poll' }, '', window.location.href);
     window.addEventListener('popstate', handlePopState);
-    window.history.pushState(null, '', window.location.href);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
@@ -56,15 +58,26 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll: initialPoll, onBack, 
     newSocket.emit('joinPoll', poll.code);
 
     newSocket.on('voteUpdate', (updatedVotes: number[]) => {
+      console.log('Received vote update:', updatedVotes);
       setPoll(prevPoll => ({
         ...prevPoll,
         votes: updatedVotes
       }));
     });
 
+    newSocket.on('connect', () => {
+      console.log('Socket connected for poll:', poll.code);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Socket disconnected');
+    });
+
     return () => {
-      newSocket.emit('leavePoll', poll.code);
-      newSocket.disconnect();
+      if (newSocket) {
+        newSocket.emit('leavePoll', poll.code);
+        newSocket.disconnect();
+      }
     };
   }, [poll.code]);
 
@@ -156,7 +169,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll: initialPoll, onBack, 
                     Multiple Choice
                   </Badge>
                 )}
-                <div className="flex items-center gap-1 text-sm text-gray-600 ml-auto">
+                <div className="flex items-center gap-1 text-sm text-gray-600 sm:ml-auto">
                   <Users className="h-4 w-4" />
                   <span>{totalVotes} votes</span>
                 </div>
