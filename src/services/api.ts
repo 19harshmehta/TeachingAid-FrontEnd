@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const BASE_URL = 'https://teachingaid-backend.onrender.com';
@@ -25,8 +24,8 @@ export const authAPI = {
 };
 
 export const pollAPI = {
-  create: (question: string, topic: string, options: string[], allowMultiple: boolean) =>
-    api.post('/api/poll/create', { question, topic, options, allowMultiple }),
+  create: (question: string, options: string[]) =>
+    api.post('/api/poll/create', { question, options }),
   
   getMyPolls: () =>
     api.get('/api/poll/mypolls'),
@@ -40,13 +39,8 @@ export const pollAPI = {
   getPollResults: (code: string) =>
     api.get(`/api/poll/results/${code}`),
   
-  vote: (code: string, optionIndex?: number, optionIndices?: number[], fingerprint?: string) =>
-    api.post('/api/poll/vote', { 
-      code, 
-      ...(optionIndex !== undefined ? { optionIndex } : {}),
-      ...(optionIndices !== undefined ? { optionIndices } : {}),
-      fingerprint 
-    }),
+  vote: (code: string, optionIndex: number, fingerprint: string) =>
+    api.post('/api/poll/vote', { code, optionIndex, fingerprint }),
   
   closePoll: (code: string) =>
     api.put(`/api/poll/${code}/status`, { isActive: false }),
