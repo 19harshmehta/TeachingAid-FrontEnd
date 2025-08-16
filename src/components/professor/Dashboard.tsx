@@ -187,7 +187,7 @@ const Dashboard = () => {
       const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
       
-      // Filter by folder
+      // Filter by folder - check if poll code exists in the selected folder's polls array
       let matchesFolder = true;
       if (selectedFolder !== 'all') {
         const folder = folders.find(f => f._id === selectedFolder);
