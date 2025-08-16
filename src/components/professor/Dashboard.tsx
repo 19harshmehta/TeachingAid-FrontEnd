@@ -303,7 +303,9 @@ const Dashboard = () => {
   };
 
   const filteredAndSortedPolls = useMemo(() => {
-    let filteredPolls = [...currentPolls];
+    // Ensure currentPolls is always an array
+    const pollsArray = Array.isArray(currentPolls) ? currentPolls : [];
+    let filteredPolls = [...pollsArray];
 
     // Filter by search query
     if (searchQuery) {
