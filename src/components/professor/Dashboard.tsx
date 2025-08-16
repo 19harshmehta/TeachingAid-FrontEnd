@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -110,8 +109,6 @@ const Dashboard = () => {
   const { 
     data: allFoldersData, 
     isLoading: isFoldersLoading, 
-    isError: isFoldersError, 
-    error: foldersError 
   } = useQuery({
     queryKey: ['folders'],
     queryFn: folderAPI.getAll,
@@ -122,7 +119,7 @@ const Dashboard = () => {
     isLoading: isFolderPollsLoading,
   } = useQuery({
     queryKey: ['folderPolls', selectedFolder],
-    queryFn: () => selectedFolder ? folderAPI.getPollsByFolder(selectedFolder) : Promise.resolve({ data: [] }),
+    queryFn: () => folderAPI.getPollsByFolder(selectedFolder!),
     enabled: !!selectedFolder,
   });
 
@@ -148,7 +145,8 @@ const Dashboard = () => {
   }, [selectedFolder, folderPollsData, allPollsData]);
 
   const createFolderMutation = useMutation({
-    mutationFn: () => folderAPI.create(newFolderName, newFolderDescription),
+    mutationFn: ({ name, description }: { name: string; description: string }) => 
+      folderAPI.create(name, description),
     onSuccess: () => {
       toast({
         title: "Folder Created!",
@@ -217,7 +215,7 @@ const Dashboard = () => {
     }
 
     try {
-      await createFolderMutation.mutateAsync();
+      await createFolderMutation.mutateAsync({ name: newFolderName, description: newFolderDescription });
     } catch (error) {
       console.error("Failed to create folder:", error);
     }
