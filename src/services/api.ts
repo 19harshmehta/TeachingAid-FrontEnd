@@ -54,4 +54,15 @@ export const pollAPI = {
     api.put(`/api/poll/${code}/status`, { isActive: false }),
 };
 
+export const folderAPI = {
+  create: (name: string, description: string) =>
+    api.post('/api/folder', { name, description }),
+  
+  getAll: () =>
+    api.get('/api/folder'),
+  
+  addPollToFolder: (folderId: string, pollCode: string) =>
+    api.post(`/api/folder/${folderId}/polls/${pollCode}`),
+};
+
 export default api;
