@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,7 +67,7 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { CalendarIcon } from "@radix-ui/react-icons"
+import { CalendarIcon } from "lucide-react"
 import { pollAPI, folderAPI } from '@/services/api';
 import { Folder as FolderType, Poll } from '@/types';
 import QRCodeModal from './QRCodeModal';
@@ -104,75 +105,86 @@ const Dashboard = () => {
   } = useQuery({
     queryKey: ['polls'],
     queryFn: pollAPI.getMyPolls,
-    initialData: [],
   });
 
   const { 
     data: allFoldersData, 
     isLoading: isFoldersLoading, 
-    isFoldersError, 
-    foldersError 
+    isError: isFoldersError, 
+    error: foldersError 
   } = useQuery({
     queryKey: ['folders'],
     queryFn: folderAPI.getAll,
-    initialData: [],
+  });
+
+  const { 
+    data: folderPollsData,
+    isLoading: isFolderPollsLoading,
+  } = useQuery({
+    queryKey: ['folderPolls', selectedFolder],
+    queryFn: () => selectedFolder ? folderAPI.getPollsByFolder(selectedFolder) : Promise.resolve({ data: [] }),
+    enabled: !!selectedFolder,
   });
 
   useEffect(() => {
-    if (allPollsData && allPollsData.data) {
+    if (allPollsData?.data) {
       setPolls(allPollsData.data);
       setCurrentPolls(allPollsData.data);
     }
   }, [allPollsData]);
 
   useEffect(() => {
-    if (allFoldersData && allFoldersData.data) {
+    if (allFoldersData?.data) {
       setFolders(allFoldersData.data);
     }
   }, [allFoldersData]);
 
-  const createFolderMutation = useMutation(
-    () => folderAPI.create(newFolderName, newFolderDescription),
-    {
-      onSuccess: () => {
-        toast({
-          title: "Folder Created!",
-          description: "Your folder has been created successfully",
-        });
-        queryClient.invalidateQueries(['folders']);
-        setShowFolderCreation(false);
-        setNewFolderName('');
-        setNewFolderDescription('');
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to create folder",
-          variant: "destructive",
-        });
-      },
+  useEffect(() => {
+    if (selectedFolder && folderPollsData?.data) {
+      setCurrentPolls(folderPollsData.data);
+    } else if (!selectedFolder && allPollsData?.data) {
+      setCurrentPolls(allPollsData.data);
     }
-  );
+  }, [selectedFolder, folderPollsData, allPollsData]);
 
-  const deletePollMutation = useMutation(
-    (pollId: string) => pollAPI.delete(pollId),
-    {
-      onSuccess: () => {
-        toast({
-          title: "Poll Deleted!",
-          description: "The poll has been deleted successfully",
-        });
-        queryClient.invalidateQueries(['polls']);
-      },
-      onError: (error: any) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to delete poll",
-          variant: "destructive",
-        });
-      },
-    }
-  );
+  const createFolderMutation = useMutation({
+    mutationFn: () => folderAPI.create(newFolderName, newFolderDescription),
+    onSuccess: () => {
+      toast({
+        title: "Folder Created!",
+        description: "Your folder has been created successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['folders'] });
+      setShowFolderCreation(false);
+      setNewFolderName('');
+      setNewFolderDescription('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create folder",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePollMutation = useMutation({
+    mutationFn: (pollId: string) => pollAPI.delete(pollId),
+    onSuccess: () => {
+      toast({
+        title: "Poll Deleted!",
+        description: "The poll has been deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['polls'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete poll",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleViewLive = (poll: Poll) => {
     navigate(`/dashboard/poll/${poll.code}`);
@@ -270,7 +282,7 @@ const Dashboard = () => {
         title: "Poll Relaunched",
         description: "The poll is now active again with votes reset",
       });
-      queryClient.invalidateQueries(['polls']);
+      queryClient.invalidateQueries({ queryKey: ['polls'] });
     } catch (error) {
       console.error('Error relaunching poll:', error);
       toast({
@@ -293,12 +305,7 @@ const Dashboard = () => {
   };
 
   const filteredAndSortedPolls = useMemo(() => {
-    let filteredPolls = [...polls];
-
-    // Filter by folder
-    if (selectedFolder) {
-      filteredPolls = filteredPolls.filter(poll => poll.folderId === selectedFolder);
-    }
+    let filteredPolls = [...currentPolls];
 
     // Filter by search query
     if (searchQuery) {
@@ -323,7 +330,7 @@ const Dashboard = () => {
     filteredPolls.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return filteredPolls;
-  }, [polls, selectedFolder, searchQuery, date]);
+  }, [currentPolls, searchQuery, date]);
 
   return (
     <div className="min-h-screen bg-gradient-main">
@@ -413,12 +420,12 @@ const Dashboard = () => {
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <Select onValueChange={handleFilterByFolder}>
+            <Select onValueChange={(value) => handleFilterByFolder(value === "all" ? null : value)}>
               <SelectTrigger className="w-full md:w-[180px] bg-white/80 backdrop-blur-sm border-0 shadow-md">
                 <SelectValue placeholder="Filter by folder" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={null}>All Folders</SelectItem>
+                <SelectItem value="all">All Folders</SelectItem>
                 {folders.map(folder => (
                   <SelectItem key={folder._id} value={folder._id}>{folder.name}</SelectItem>
                 ))}
@@ -455,7 +462,7 @@ const Dashboard = () => {
 
         {/* Polls Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentPolls.map((poll) => (
+          {filteredAndSortedPolls.map((poll) => (
             <Card key={poll._id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 animate-fade-in">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
@@ -657,7 +664,7 @@ const Dashboard = () => {
           onClose={() => setShowMoveToFolderModal(false)}
           poll={selectedPollForFolder}
           folders={folders}
-          onPollMoved={() => queryClient.invalidateQueries(['polls'])}
+          onPollMoved={() => queryClient.invalidateQueries({ queryKey: ['polls'] })}
         />
 
         {/* Past Results Modal */}
