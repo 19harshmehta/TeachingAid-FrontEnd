@@ -1,15 +1,15 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff, QrCode, X, Play, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, RefreshCw, Wifi, WifiOff, QrCode, X, Play } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { QRCodeSVG } from 'qrcode.react';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { io, Socket } from 'socket.io-client';
 import QRCodeModal from './QRCodeModal';
-import PastResultsModal from './PastResultsModal';
 
 interface Poll {
   _id: string;
@@ -20,12 +20,6 @@ interface Poll {
   isActive: boolean;
   votes: number[];
   allowMultiple?: boolean;
-  history?: Array<{
-    votes: number[];
-    votedFingerprints: number;
-    timestamp: string;
-    _id: string;
-  }>;
 }
 
 interface PollResults {
@@ -61,7 +55,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
   const [isClosing, setIsClosing] = useState(false);
   const [isRelaunching, setIsRelaunching] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
-  const [showPastResults, setShowPastResults] = useState(false);
   const { toast } = useToast();
   
   const socketRef = useRef<Socket | null>(null);
@@ -376,19 +369,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                     Show QR Code
                   </Button>
                   
-                  {/* Show Past Results button if history exists */}
-                  {currentPoll.history && currentPoll.history.length > 0 && (
-                    <Button
-                      onClick={() => setShowPastResults(true)}
-                      size="sm"
-                      variant="outline"
-                      className="bg-white/70 backdrop-blur-sm hover:bg-white/90"
-                    >
-                      <BarChart3 className="h-4 w-4 mr-2" />
-                      View Past Results
-                    </Button>
-                  )}
-                  
                   {currentPoll.isActive ? (
                     <Button
                       onClick={handleClosePoll}
@@ -619,13 +599,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
         pollCode={currentPoll.code}
-      />
-
-      {/* Past Results Modal */}
-      <PastResultsModal
-        isOpen={showPastResults}
-        onClose={() => setShowPastResults(false)}
-        poll={currentPoll}
       />
     </div>
   );

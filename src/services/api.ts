@@ -52,9 +52,6 @@ export const pollAPI = {
   
   closePoll: (code: string) =>
     api.put(`/api/poll/${code}/status`, { isActive: false }),
-  
-  delete: (pollId: string) =>
-    api.delete(`/api/poll/${pollId}`),
 };
 
 export const folderAPI = {
