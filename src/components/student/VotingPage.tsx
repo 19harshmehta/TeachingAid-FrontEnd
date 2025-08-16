@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Check, Users, X, AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Vote, Users, AlertCircle } from 'lucide-react';
 import { pollAPI } from '@/services/api';
 import { getFingerprint } from '@/services/fingerprint';
 import { useToast } from '@/hooks/use-toast';
@@ -11,209 +14,154 @@ import { useToast } from '@/hooks/use-toast';
 interface Poll {
   _id: string;
   question: string;
+  topic?: string;
   options: string[];
   code: string;
   isActive: boolean;
-  createdBy?: {
-    name: string;
-    email: string;
-  };
+  allowMultiple?: boolean;
 }
 
 const VotingPage = () => {
   const { code } = useParams<{ code: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [poll, setPoll] = useState<Poll | null>(location.state?.poll || null);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(!location.state?.poll);
-  const [error, setError] = useState<string | null>(null);
+  const [poll, setPoll] = useState<Poll | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [voting, setVoting] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
+  const [singleSelection, setSingleSelection] = useState<string>('');
   const [fingerprint, setFingerprint] = useState<string>('');
 
   useEffect(() => {
-    console.log('VotingPage mounted with code:', code);
-    console.log('Location state:', location.state);
-    initializeFingerprint();
-    
-    if (!poll && code) {
-      console.log('No poll in state, fetching poll with code:', code);
+    if (code) {
       fetchPoll();
+      initFingerprint();
     }
-  }, [code, poll]);
+  }, [code]);
 
-  const initializeFingerprint = async () => {
+  const initFingerprint = async () => {
     try {
       const fp = await getFingerprint();
       setFingerprint(fp);
-      console.log('Generated fingerprint:', fp);
     } catch (error) {
-      console.error('Failed to generate fingerprint:', error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize voting system",
-        variant: "destructive",
-      });
+      console.error('Error getting fingerprint:', error);
+      // Generate a fallback fingerprint
+      setFingerprint(`fp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
     }
   };
 
   const fetchPoll = async () => {
-    if (!code) {
-      console.error('No poll code provided');
-      setError("Invalid poll code");
-      setInitialLoading(false);
-      return;
-    }
-    
-    console.log('Starting poll fetch for code:', code);
-    setInitialLoading(true);
-    setError(null);
-    
     try {
-      console.log('Making API call to fetch poll with code:', code);
-      // Ensure the code is properly formatted (uppercase and trimmed)
-      const cleanCode = code.trim().toUpperCase();
-      const response = await pollAPI.getPollByCode(cleanCode);
-      console.log('Poll API response:', response);
-      console.log('Poll data received:', response.data);
+      const response = await pollAPI.getPollByCode(code!);
+      console.log('Poll data:', response.data);
       
-      if (response.data) {
-        setPoll(response.data);
-        console.log('Poll set successfully:', response.data);
-      } else {
-        console.error('No data in response');
-        setError("Poll data not found");
+      let pollData = response.data;
+      if (response.data.data) {
+        pollData = response.data.data;
       }
-    } catch (error: any) {
+      
+      setPoll(pollData);
+    } catch (error) {
       console.error('Error fetching poll:', error);
-      console.error('Error response:', error.response);
-      console.error('Error status:', error.response?.status);
-      console.error('Error data:', error.response?.data);
-      
-      let errorMessage = "This poll could not be found";
-      
-      if (error.response?.status === 404) {
-        errorMessage = `Poll with code "${code}" not found. Please check the poll code and try again.`;
-      } else if (error.response?.status === 500) {
-        errorMessage = "Server error. Please try again later.";
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      } else if (error.code === 'NETWORK_ERROR') {
-        errorMessage = "Network error. Please check your connection and try again.";
-      }
-      
-      setError(errorMessage);
-      
       toast({
-        title: "Poll Not Found",
-        description: errorMessage,
+        title: "Error",
+        description: "Poll not found or has expired",
         variant: "destructive",
       });
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-
-  const handleVote = async () => {
-    if (!poll || selectedOption === null || !fingerprint) return;
-
-    setLoading(true);
-
-    try {
-      console.log('Submitting vote:', { code: poll.code, optionIndex: selectedOption, fingerprint });
-      const response = await pollAPI.vote(poll.code, selectedOption, fingerprint);
-      console.log('Vote response:', response.data);
-      setHasVoted(true);
-      toast({
-        title: "Vote Recorded!",
-        description: "Thank you for participating in the poll",
-      });
-    } catch (error: any) {
-      console.error('Vote error:', error);
-      toast({
-        title: "Vote Failed",
-        description: error.response?.data?.message || "Failed to record your vote",
-        variant: "destructive",
-      });
+      navigate('/join');
     } finally {
       setLoading(false);
     }
   };
 
-  // Show loading state
-  if (initialLoading) {
+  const handleMultipleSelectionChange = (optionIndex: number, checked: boolean) => {
+    if (checked) {
+      setSelectedOptions([...selectedOptions, optionIndex]);
+    } else {
+      setSelectedOptions(selectedOptions.filter(index => index !== optionIndex));
+    }
+  };
+
+  const handleSingleSelectionChange = (value: string) => {
+    setSingleSelection(value);
+  };
+
+  const handleVote = async () => {
+    if (!poll || !fingerprint) return;
+
+    if (poll.allowMultiple) {
+      if (selectedOptions.length === 0) {
+        toast({
+          title: "No Selection",
+          description: "Please select at least one option",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      if (singleSelection === '') {
+        toast({
+          title: "No Selection",
+          description: "Please select an option",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setVoting(true);
+
+    try {
+      if (poll.allowMultiple) {
+        await pollAPI.vote(poll.code, undefined, selectedOptions, fingerprint);
+      } else {
+        await pollAPI.vote(poll.code, parseInt(singleSelection), undefined, fingerprint);
+      }
+
+      toast({
+        title: "Vote Submitted!",
+        description: "Thank you for participating in the poll",
+      });
+
+      // Navigate to a thank you page or back to join
+      setTimeout(() => {
+        navigate('/join');
+      }, 2000);
+    } catch (error: any) {
+      console.error('Error submitting vote:', error);
+      const errorMessage = error.response?.data?.message || "Failed to submit vote";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading poll...</p>
-          <p className="text-sm text-gray-500 mt-2">Code: {code}</p>
         </div>
       </div>
     );
   }
 
-  // Show error state
-  if (error || !poll) {
+  if (!poll) {
     return (
-      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-6 sm:p-8 text-center">
-            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="h-8 w-8 text-white" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Poll Not Found</h2>
-            <p className="text-gray-600 mb-2 text-sm sm:text-base">
-              {error || "The poll you're looking for doesn't exist or has been removed."}
-            </p>
-            <p className="text-sm text-gray-500 mb-6">Poll Code: {code}</p>
-            <div className="space-y-3">
-              <Button
-                onClick={() => {
-                  setError(null);
-                  fetchPoll();
-                }}
-                variant="outline"
-                className="w-full"
-              >
-                Try Again
-              </Button>
-              <Button
-                onClick={() => navigate('/join')}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                Join Another Poll
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Show closed poll message
-  if (!poll.isActive) {
-    return (
-      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-6 sm:p-8 text-center">
-            <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <X className="h-8 w-8 text-white" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Poll Closed</h2>
-            <p className="text-gray-600 mb-6 text-sm sm:text-base">
-              This poll is no longer accepting votes. Please check with the poll creator for more information.
-            </p>
-            <Button
-              onClick={() => navigate('/join')}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              Join Another Poll
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Poll Not Found</h2>
+            <p className="text-gray-600 mb-4">The poll you're looking for doesn't exist or has expired.</p>
+            <Button onClick={() => navigate('/join')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Join
             </Button>
           </CardContent>
         </Card>
@@ -221,23 +169,17 @@ const VotingPage = () => {
     );
   }
 
-  if (hasVoted) {
+  if (!poll.isActive) {
     return (
-      <div className="min-h-screen bg-gradient-main flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardContent className="p-6 sm:p-8 text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="h-8 w-8 text-white" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Vote Recorded!</h2>
-            <p className="text-gray-600 mb-6 text-sm sm:text-base">
-              Thank you for participating in this poll. Your vote has been recorded.
-            </p>
-            <Button
-              onClick={() => navigate('/join')}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-            >
-              Join Another Poll
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="p-6 text-center">
+            <Vote className="h-16 w-16 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Poll Closed</h2>
+            <p className="text-gray-600 mb-4">This poll is no longer accepting votes.</p>
+            <Button onClick={() => navigate('/join')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Join
             </Button>
           </CardContent>
         </Card>
@@ -246,79 +188,129 @@ const VotingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-main p-4">
-      <div className="container mx-auto max-w-2xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/join')}
-          className="mb-6 text-purple-700 hover:text-purple-800"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Join
-        </Button>
+    <div className="min-h-screen bg-gradient-main">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <div className="mb-8 animate-fade-in">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/join')}
+              className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Join
+            </Button>
 
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-fade-in">
-          <CardHeader className="text-center">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mb-2">
-              <span className="text-sm text-gray-600">Poll Code:</span>
-              <span className="font-mono text-lg font-bold text-purple-600">{poll.code}</span>
-            </div>
-            <CardTitle className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
-              {poll.question}
-            </CardTitle>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 text-purple-700">
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="text-sm">Live Poll</span>
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Users className="h-5 w-5 text-purple-600" />
+                <span className="text-sm text-gray-600">Poll Code: <span className="font-mono font-bold">{poll.code}</span></span>
               </div>
-              {poll.createdBy && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-500">•</span>
-                  <span className="text-sm text-gray-600">
-                    Created by {poll.createdBy.name}
+              
+              {poll.topic && (
+                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mb-4">
+                  {poll.topic}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Poll Question */}
+          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg mb-8 animate-slide-up">
+            <CardHeader>
+              <CardTitle className="text-center">
+                <pre className="text-lg md:text-xl font-bold text-gray-800 whitespace-pre-wrap font-mono">
+                  {poll.question}
+                </pre>
+              </CardTitle>
+              {poll.allowMultiple && (
+                <div className="text-center">
+                  <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 mt-2">
+                    Multiple selections allowed
                   </span>
                 </div>
               )}
-            </div>
-          </CardHeader>
-          
-          <CardContent className="p-4 sm:p-6">
-            <div className="space-y-3 mb-6">
-              {poll.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedOption(index)}
-                  className={`w-full p-3 sm:p-4 text-left rounded-lg border-2 transition-all duration-200 ${
-                    selectedOption === index
-                      ? 'border-purple-500 bg-purple-50 text-purple-700'
-                      : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm sm:text-base">{option}</span>
-                    {selectedOption === index && (
-                      <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
-                        <Check className="h-3 w-3 text-white" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {poll.allowMultiple ? (
+                  // Multiple selection mode
+                  poll.options.map((option, index) => (
+                    <div key={index} className="flex items-start space-x-3 p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors">
+                      <Checkbox
+                        id={`option-${index}`}
+                        checked={selectedOptions.includes(index)}
+                        onCheckedChange={(checked) => handleMultipleSelectionChange(index, checked as boolean)}
+                        className="mt-1"
+                      />
+                      <Label 
+                        htmlFor={`option-${index}`} 
+                        className="flex-1 cursor-pointer"
+                      >
+                        <pre className="whitespace-pre-wrap font-mono text-sm">
+                          {option}
+                        </pre>
+                      </Label>
+                    </div>
+                  ))
+                ) : (
+                  // Single selection mode
+                  <RadioGroup value={singleSelection} onValueChange={handleSingleSelectionChange}>
+                    {poll.options.map((option, index) => (
+                      <div key={index} className="flex items-start space-x-3 p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors">
+                        <RadioGroupItem value={index.toString()} id={`option-${index}`} className="mt-1" />
+                        <Label 
+                          htmlFor={`option-${index}`} 
+                          className="flex-1 cursor-pointer"
+                        >
+                          <pre className="whitespace-pre-wrap font-mono text-sm">
+                            {option}
+                          </pre>
+                        </Label>
                       </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              </div>
 
-            <Button
-              onClick={handleVote}
-              disabled={selectedOption === null || loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50"
-            >
-              {loading ? 'Recording Vote...' : 'Submit Vote'}
-            </Button>
+              <div className="mt-8 text-center">
+                <Button
+                  onClick={handleVote}
+                  disabled={voting || (poll.allowMultiple ? selectedOptions.length === 0 : singleSelection === '')}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-3 text-lg"
+                >
+                  {voting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting Vote...
+                    </>
+                  ) : (
+                    <>
+                      <Vote className="h-5 w-5 mr-2" />
+                      Submit Vote
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            <p className="text-xs text-gray-500 text-center mt-4">
-              Your vote is anonymous and will be recorded securely.
-            </p>
-          </CardContent>
-        </Card>
+          {/* Instructions */}
+          <Card className="bg-gradient-to-r from-blue-100/80 to-purple-100/80 backdrop-blur-sm border-0 shadow-lg animate-fade-in">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-lg font-semibold mb-2 text-purple-800">
+                How to Vote
+              </h3>
+              <p className="text-sm text-purple-600">
+                {poll.allowMultiple 
+                  ? "Select one or more options that apply to you, then click 'Submit Vote'."
+                  : "Select one option that best represents your choice, then click 'Submit Vote'."
+                }
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

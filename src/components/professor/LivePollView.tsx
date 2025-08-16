@@ -14,10 +14,12 @@ import QRCodeModal from './QRCodeModal';
 interface Poll {
   _id: string;
   question: string;
+  topic?: string;
   options: string[];
   code: string;
   isActive: boolean;
   votes: number[];
+  allowMultiple?: boolean;
 }
 
 interface PollResults {
@@ -296,20 +298,18 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
             </div>
           </div>
 
-          {/* Poll Info Card */}
-          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-6">
-              <div className="text-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800 mb-4">{pollResults.question}</h1>
-                
-                <div className="flex items-center justify-center gap-6 mb-4">
+          {/* Settings Panel - As shown in your image */}
+          <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg mb-6">
+            <CardContent className="p-4">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600">Poll Code:</span>
+                    <span className="font-medium text-gray-600">Poll Code:</span>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={copyPollCode}
-                      className="bg-white/70 backdrop-blur-sm hover:bg-white/90 font-mono text-lg font-bold"
+                      className="bg-white/70 backdrop-blur-sm hover:bg-white/90 font-mono text-lg font-bold h-8"
                     >
                       {currentPoll.code}
                       {copied ? (
@@ -321,7 +321,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600">Status:</span>
+                    <span className="font-medium text-gray-600">Status:</span>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       currentPoll.isActive 
                         ? 'bg-green-100 text-green-800' 
@@ -330,23 +330,21 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                       {currentPoll.isActive ? 'Active' : 'Closed'}
                     </span>
                   </div>
-                </div>
-                
-                <div className="flex items-center justify-center gap-6 text-sm text-gray-600">
+
                   <div className="flex items-center gap-2">
                     {socketConnected ? (
                       <>
                         <Wifi className="h-4 w-4 text-green-600" />
-                        <span className="text-green-600">Live Connected</span>
+                        <span className="text-green-600 font-medium">Live Connected</span>
                       </>
                     ) : (
                       <>
                         <WifiOff className="h-4 w-4 text-orange-500" />
-                        <span className="text-orange-500">Polling Mode</span>
+                        <span className="text-orange-500 font-medium">Polling Mode</span>
                       </>
                     )}
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -357,62 +355,91 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                     <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
-                  
-                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
-                </div>
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-center gap-4">
-                <Button
-                  onClick={() => setShowQRModal(true)}
-                  className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                >
-                  <QrCode className="h-4 w-4 mr-2" />
-                  Show QR Code
-                </Button>
-                
-                {currentPoll.isActive ? (
+                  <span className="text-gray-500">Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+
+                <div className="flex gap-3">
                   <Button
-                    onClick={handleClosePoll}
-                    disabled={isClosing}
-                    variant="destructive"
+                    onClick={() => setShowQRModal(true)}
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
                   >
-                    {isClosing ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Closing...
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-4 w-4 mr-2" />
-                        Close Poll
-                      </>
-                    )}
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Show QR Code
                   </Button>
-                ) : (
-                  <Button
-                    onClick={handleRelaunchPoll}
-                    disabled={isRelaunching}
-                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                  >
-                    {isRelaunching ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        Relaunching...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-4 w-4 mr-2" />
-                        Relaunch Poll
-                      </>
-                    )}
-                  </Button>
-                )}
+                  
+                  {currentPoll.isActive ? (
+                    <Button
+                      onClick={handleClosePoll}
+                      disabled={isClosing}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      {isClosing ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Closing...
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-4 w-4 mr-2" />
+                          Close Poll
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleRelaunchPoll}
+                      disabled={isRelaunching}
+                      size="sm"
+                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    >
+                      {isRelaunching ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Relaunching...
+                        </>
+                      ) : (
+                        <>
+                          <Play className="h-4 w-4 mr-2" />
+                          Relaunch Poll
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Question Section */}
+        <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg mb-8 animate-fade-in">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <pre className="text-xl md:text-2xl font-bold text-gray-800 mb-4 whitespace-pre-wrap font-mono">
+                {pollResults.question}
+              </pre>
+              
+              {currentPoll.topic && (
+                <div className="flex justify-center mb-4">
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    Topic: {currentPoll.topic}
+                  </span>
+                </div>
+              )}
+
+              {currentPoll.allowMultiple && (
+                <div className="flex justify-center">
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                    Multiple selections allowed
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Poll Closed Message */}
         {!currentPoll.isActive && (
@@ -427,6 +454,37 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
             </CardContent>
           </Card>
         )}
+
+        {/* Results Summary */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg animate-fade-in mb-8">
+          <CardHeader>
+            <CardTitle>Results Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {chartData.map((item, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-white/50 to-purple-50/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div 
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                    ></div>
+                    <pre className="font-medium text-sm font-mono whitespace-pre-wrap break-words flex-1">
+                      {item.fullOption}
+                    </pre>
+                  </div>
+                  <div className="text-right ml-4 flex-shrink-0">
+                    <div className="font-bold text-lg">{item.votes} votes</div>
+                    <div className="text-sm text-gray-600">{item.percentage}%</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Charts */}
         <div className="grid lg:grid-cols-2 gap-8 mb-8">
@@ -497,35 +555,6 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
             </CardContent>
           </Card>
         </div>
-
-        {/* Results Summary */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg animate-fade-in">
-          <CardHeader>
-            <CardTitle>Results Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {chartData.map((item, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-white/50 to-purple-50/50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                    ></div>
-                    <span className="font-medium">{item.fullOption}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-lg">{item.votes} votes</div>
-                    <div className="text-sm text-gray-600">{item.percentage}%</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Instructions */}
         <Card className="mt-8 bg-gradient-to-r from-purple-100/80 to-pink-100/80 backdrop-blur-sm border-0 shadow-lg animate-fade-in">

@@ -2,20 +2,26 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, Tag } from 'lucide-react';
 
 interface PollsSearchFilterProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   sortBy: string;
   onSortChange: (value: string) => void;
+  topicFilter: string;
+  onTopicFilterChange: (value: string) => void;
+  availableTopics: string[];
 }
 
 const PollsSearchFilter = ({ 
   searchTerm, 
   onSearchChange, 
   sortBy, 
-  onSortChange 
+  onSortChange,
+  topicFilter,
+  onTopicFilterChange,
+  availableTopics
 }: PollsSearchFilterProps) => {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -28,6 +34,21 @@ const PollsSearchFilter = ({
           onChange={(e) => onSearchChange(e.target.value)}
           className="pl-10 bg-white/70 backdrop-blur-sm border-0 shadow-lg"
         />
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Tag className="h-4 w-4 text-gray-600" />
+        <Select value={topicFilter} onValueChange={onTopicFilterChange}>
+          <SelectTrigger className="w-40 bg-white/70 backdrop-blur-sm border-0 shadow-lg">
+            <SelectValue placeholder="All Topics" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Topics</SelectItem>
+            {availableTopics.map((topic) => (
+              <SelectItem key={topic} value={topic}>{topic}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="flex items-center gap-2">

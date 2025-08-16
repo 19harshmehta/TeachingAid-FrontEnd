@@ -15,11 +15,13 @@ import PollsSearchFilter from './PollsSearchFilter';
 interface Poll {
   _id: string;
   question: string;
+  topic?: string;
   options: string[];
   code: string;
   isActive: boolean;
   createdAt: string;
   votes: number[];
+  allowMultiple?: boolean;
 }
 
 const Dashboard = () => {
@@ -33,6 +35,7 @@ const Dashboard = () => {
   const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
+  const [topicFilter, setTopicFilter] = useState('all');
 
   // Ensure polls is always an array
   const safePollsArray = Array.isArray(polls) ? polls : [];
@@ -63,7 +66,8 @@ const Dashboard = () => {
       
       const processedPolls = pollsData.map(poll => ({
         ...poll,
-        votes: Array.isArray(poll.votes) ? poll.votes : []
+        votes: Array.isArray(poll.votes) ? poll.votes : [],
+        topic: poll.topic || 'General'
       }));
       
       setPolls(processedPolls);
@@ -133,10 +137,17 @@ const Dashboard = () => {
     ));
   };
 
+  const availableTopics = useMemo(() => {
+    const topics = safePollsArray.map(poll => poll.topic || 'General');
+    return [...new Set(topics)].sort();
+  }, [safePollsArray]);
+
   const filteredAndSortedPolls = useMemo(() => {
-    let filtered = safePollsArray.filter(poll =>
-      poll.question.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    let filtered = safePollsArray.filter(poll => {
+      const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
+      return matchesSearch && matchesTopic;
+    });
 
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -158,7 +169,7 @@ const Dashboard = () => {
     });
 
     return filtered;
-  }, [safePollsArray, searchTerm, sortBy]);
+  }, [safePollsArray, searchTerm, sortBy, topicFilter]);
 
   if (loading) {
     return (
@@ -270,13 +281,16 @@ const Dashboard = () => {
               onSearchChange={setSearchTerm}
               sortBy={sortBy}
               onSortChange={setSortBy}
+              topicFilter={topicFilter}
+              onTopicFilterChange={setTopicFilter}
+              availableTopics={availableTopics}
             />
             
             {filteredAndSortedPolls.length === 0 ? (
               <div className="text-center py-12">
                 <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">
-                  {searchTerm ? 'No polls found matching your search' : 'No polls created yet'}
+                  {searchTerm || topicFilter !== 'all' ? 'No polls found matching your search' : 'No polls created yet'}
                 </p>
                 <Button
                   onClick={() => setShowCreateModal(true)}
@@ -299,13 +313,23 @@ const Dashboard = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
                           <h3 className="font-semibold text-gray-800 truncate pr-2">{poll.question}</h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium self-start ${
-                            poll.isActive 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {poll.isActive ? 'Active' : 'Closed'}
-                          </span>
+                          <div className="flex gap-2 flex-wrap">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {poll.topic || 'General'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              poll.isActive 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {poll.isActive ? 'Active' : 'Closed'}
+                            </span>
+                            {poll.allowMultiple && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Multiple
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-600">
                           <span>Code: <span className="font-mono">{poll.code}</span></span>
