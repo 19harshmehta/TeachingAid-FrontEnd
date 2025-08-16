@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI, folderAPI } from '@/services/api';
@@ -166,7 +165,8 @@ const Dashboard = () => {
     setShowQRModal(true);
   };
 
-  const handleMovePoll = (poll: Poll) => {
+  const handleMovePoll = async (poll: Poll) => {
+    await fetchFolders(); // Refresh folders before showing modal
     setSelectedPollForMove({ code: poll.code, question: poll.question });
     setShowMoveModal(true);
   };
@@ -210,7 +210,7 @@ const Dashboard = () => {
         case 'closed':
           if (!a.isActive && b.isActive) return -1;
           if (a.isActive && !b.isActive) return 1;
-          return new Date(b.createdAt).getTime() - new(a.createdAt).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         default:
           return 0;
       }
@@ -346,11 +346,14 @@ const Dashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Polls ({safePollsArray.length})</SelectItem>
-                  {folders.map((folder) => (
-                    <SelectItem key={folder._id} value={folder._id}>
-                      {folder.name} ({folder.polls.length})
-                    </SelectItem>
-                  ))}
+                  {folders.map((folder) => {
+                    const folderPollCount = safePollsArray.filter(poll => folder.polls.includes(poll.code)).length;
+                    return (
+                      <SelectItem key={folder._id} value={folder._id}>
+                        {folder.name} ({folderPollCount})
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
