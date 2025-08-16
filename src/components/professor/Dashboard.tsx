@@ -125,8 +125,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (allPollsData?.data) {
-      setPolls(allPollsData.data);
-      setCurrentPolls(allPollsData.data);
+      // Ensure we always set an array
+      const pollsData = Array.isArray(allPollsData.data) ? allPollsData.data : [];
+      setPolls(pollsData);
+      setCurrentPolls(pollsData);
     }
   }, [allPollsData]);
 
@@ -332,6 +334,8 @@ const Dashboard = () => {
     return filteredPolls;
   }, [currentPolls, searchQuery, date]);
 
+  const pollsArray = Array.isArray(polls) ? polls : [];
+
   return (
     <div className="min-h-screen bg-gradient-main">
       {/* Header */}
@@ -359,7 +363,7 @@ const Dashboard = () => {
               <Users className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{polls.length}</div>
+              <div className="text-2xl font-bold">{pollsArray.length}</div>
               <p className="text-xs text-gray-500">All polls created</p>
             </CardContent>
           </Card>
@@ -369,7 +373,7 @@ const Dashboard = () => {
               <TrendingUp className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{polls.filter(poll => poll.isActive).length}</div>
+              <div className="text-2xl font-bold">{pollsArray.filter(poll => poll.isActive).length}</div>
               <p className="text-xs text-gray-500">Currently accepting votes</p>
             </CardContent>
           </Card>
@@ -379,7 +383,7 @@ const Dashboard = () => {
               <Clock className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{polls.filter(poll => !poll.isActive).length}</div>
+              <div className="text-2xl font-bold">{pollsArray.filter(poll => !poll.isActive).length}</div>
               <p className="text-xs text-gray-500">No longer accepting votes</p>
             </CardContent>
           </Card>
