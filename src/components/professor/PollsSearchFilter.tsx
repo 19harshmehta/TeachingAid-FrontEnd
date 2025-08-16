@@ -21,7 +21,7 @@ const PollsSearchFilter = ({
   onSortChange,
   topicFilter,
   onTopicFilterChange,
-  availableTopics
+  availableTopics = [] // Default to empty array to prevent undefined errors
 }: PollsSearchFilterProps) => {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">

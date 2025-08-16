@@ -40,7 +40,7 @@ export const pollAPI = {
   getPollResults: (code: string) =>
     api.get(`/api/poll/results/${code}`),
   
-  vote: (code: string, optionIndex?: number, optionIndices?: number[], fingerprint: string) => {
+  vote: (code: string, fingerprint: string, optionIndex?: number, optionIndices?: number[]) => {
     const body: any = { code, fingerprint };
     if (optionIndices !== undefined) {
       body.optionIndices = optionIndices;

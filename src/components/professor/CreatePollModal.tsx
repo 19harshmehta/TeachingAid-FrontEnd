@@ -5,10 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, X } from 'lucide-react';
 import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, X } from 'lucide-react';
 
 interface CreatePollModalProps {
   isOpen: boolean;
@@ -16,25 +21,25 @@ interface CreatePollModalProps {
   onPollCreated: () => void;
 }
 
-const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
+const CreatePollModal = ({ isOpen, onClose, onPollCreated }: CreatePollModalProps) => {
+  const { toast } = useToast();
   const [question, setQuestion] = useState('');
   const [topic, setTopic] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
 
-  const addOption = () => {
+  const handleAddOption = () => {
     setOptions([...options, '']);
   };
 
-  const removeOption = (index: number) => {
+  const handleRemoveOption = (index: number) => {
     if (options.length > 2) {
       setOptions(options.filter((_, i) => i !== index));
     }
   };
 
-  const updateOption = (index: number, value: string) => {
+  const handleOptionChange = (index: number, value: string) => {
     const newOptions = [...options];
     newOptions[index] = value;
     setOptions(newOptions);
@@ -43,25 +48,16 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!question.trim()) {
+    if (!question.trim() || !topic.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a poll question",
+        description: "Please fill in both question and topic",
         variant: "destructive",
       });
       return;
     }
 
-    if (!topic.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a topic",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const validOptions = options.filter(opt => opt.trim());
+    const validOptions = options.filter(opt => opt.trim() !== '');
     if (validOptions.length < 2) {
       toast({
         title: "Error",
@@ -85,6 +81,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
       setTopic('');
       setOptions(['', '']);
       setAllowMultiple(false);
+      
       onPollCreated();
     } catch (error) {
       console.error('Error creating poll:', error);
@@ -98,96 +95,113 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
     }
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white/90 backdrop-blur-sm max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            Create New Poll
-          </DialogTitle>
-        </DialogHeader>
+  const handleClose = () => {
+    setQuestion('');
+    setTopic('');
+    setOptions(['', '']);
+    setAllowMultiple(false);
+    onClose();
+  };
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+  const handleAllowMultipleChange = (checked: boolean | "indeterminate") => {
+    setAllowMultiple(checked === true);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create New Poll</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="topic">Topic</Label>
             <Input
               id="topic"
-              placeholder="e.g., Programming, Technology, General"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., Programming, Science, General"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="question">Poll Question</Label>
+            <Label htmlFor="question">Question</Label>
             <Textarea
               id="question"
-              placeholder="What's your favorite programming language? You can include code snippets:&#10;&#10;const greeting = () => {&#10;  console.log('Hello World');&#10;};"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              className="min-h-[100px] font-mono text-sm"
+              placeholder="Enter your poll question here. You can use multiple lines and include code snippets."
               required
+              rows={4}
+              className="font-mono text-sm"
             />
+            <p className="text-xs text-gray-500">
+              Supports multiline text and code snippets. Use proper formatting for better readability.
+            </p>
           </div>
 
-          <div className="space-y-3">
-            <Label>Answer Options</Label>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Options</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddOption}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Option
+              </Button>
+            </div>
+            
             {options.map((option, index) => (
-              <div key={index} className="flex gap-2 items-start">
-                <Textarea
-                  placeholder={`Option ${index + 1} (supports multiline and code)`}
-                  value={option}
-                  onChange={(e) => updateOption(index, e.target.value)}
-                  className="min-h-[60px] font-mono text-sm"
-                  required
-                />
+              <div key={index} className="flex gap-2">
+                <div className="flex-1">
+                  <Textarea
+                    value={option}
+                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                    placeholder={`Option ${index + 1} (supports multiline and code)`}
+                    rows={2}
+                    className="font-mono text-sm"
+                  />
+                </div>
                 {options.length > 2 && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => removeOption(index)}
-                    className="p-2 mt-1"
+                    onClick={() => handleRemoveOption(index)}
+                    className="mt-1"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             ))}
-            
-            {options.length < 6 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addOption}
-                className="w-full border-dashed"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Option
-              </Button>
-            )}
+            <p className="text-xs text-gray-500">
+              Each option supports multiline text and code snippets.
+            </p>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="allowMultiple" 
+            <Checkbox
+              id="allowMultiple"
               checked={allowMultiple}
-              onCheckedChange={setAllowMultiple}
+              onCheckedChange={handleAllowMultipleChange}
             />
-            <Label 
-              htmlFor="allowMultiple" 
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
+            <Label htmlFor="allowMultiple" className="text-sm">
               Allow multiple selections
             </Label>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-4 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
+              disabled={loading}
               className="flex-1"
             >
               Cancel
@@ -195,7 +209,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
             >
               {loading ? 'Creating...' : 'Create Poll'}
             </Button>

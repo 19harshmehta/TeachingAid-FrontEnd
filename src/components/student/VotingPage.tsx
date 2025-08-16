@@ -113,9 +113,9 @@ const VotingPage = () => {
 
     try {
       if (poll.allowMultiple) {
-        await pollAPI.vote(poll.code, undefined, selectedOptions, fingerprint);
+        await pollAPI.vote(poll.code, fingerprint, undefined, selectedOptions);
       } else {
-        await pollAPI.vote(poll.code, parseInt(singleSelection), undefined, fingerprint);
+        await pollAPI.vote(poll.code, fingerprint, parseInt(singleSelection));
       }
 
       toast({
