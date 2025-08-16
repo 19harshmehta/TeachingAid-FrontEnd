@@ -44,6 +44,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [folderPollsMap, setFolderPollsMap] = useState<Record<string, Poll[]>>({});
   const [selectedFolder, setSelectedFolder] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -107,7 +108,28 @@ const Dashboard = () => {
   const fetchFolders = async () => {
     try {
       const response = await folderAPI.getAll();
-      setFolders(response.data || []);
+      const foldersData = response.data || [];
+      setFolders(foldersData);
+      
+      // Fetch polls for each folder
+      const folderPollsPromises = foldersData.map(async (folder: Folder) => {
+        try {
+          const folderPollsResponse = await folderAPI.getPollsByFolder(folder._id);
+          return { folderId: folder._id, polls: folderPollsResponse.data || [] };
+        } catch (error) {
+          console.error(`Error fetching polls for folder ${folder._id}:`, error);
+          return { folderId: folder._id, polls: [] };
+        }
+      });
+      
+      const folderPollsResults = await Promise.all(folderPollsPromises);
+      const newFolderPollsMap: Record<string, Poll[]> = {};
+      
+      folderPollsResults.forEach(({ folderId, polls }) => {
+        newFolderPollsMap[folderId] = polls;
+      });
+      
+      setFolderPollsMap(newFolderPollsMap);
     } catch (error) {
       console.error('Error fetching folders:', error);
       toast({
@@ -183,18 +205,20 @@ const Dashboard = () => {
   }, [safePollsArray]);
 
   const filteredAndSortedPolls = useMemo(() => {
-    let filtered = safePollsArray.filter(poll => {
+    let filtered: Poll[] = [];
+    
+    if (selectedFolder === 'all') {
+      filtered = safePollsArray;
+    } else {
+      // Use polls from the folder-specific API
+      filtered = folderPollsMap[selectedFolder] || [];
+    }
+    
+    // Apply search and topic filters
+    filtered = filtered.filter(poll => {
       const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
-      
-      // Filter by folder - check if poll code exists in the selected folder's polls array
-      let matchesFolder = true;
-      if (selectedFolder !== 'all') {
-        const folder = folders.find(f => f._id === selectedFolder);
-        matchesFolder = folder ? folder.polls.includes(poll.code) : false;
-      }
-      
-      return matchesSearch && matchesTopic && matchesFolder;
+      return matchesSearch && matchesTopic;
     });
 
     filtered.sort((a, b) => {
@@ -217,7 +241,7 @@ const Dashboard = () => {
     });
 
     return filtered;
-  }, [safePollsArray, searchTerm, sortBy, topicFilter, selectedFolder, folders]);
+  }, [safePollsArray, folderPollsMap, selectedFolder, searchTerm, sortBy, topicFilter]);
 
   if (loading) {
     return (
@@ -347,7 +371,7 @@ const Dashboard = () => {
                 <SelectContent>
                   <SelectItem value="all">All Polls ({safePollsArray.length})</SelectItem>
                   {folders.map((folder) => {
-                    const folderPollCount = safePollsArray.filter(poll => folder.polls.includes(poll.code)).length;
+                    const folderPollCount = folderPollsMap[folder._id]?.length || 0;
                     return (
                       <SelectItem key={folder._id} value={folder._id}>
                         {folder.name} ({folderPollCount})

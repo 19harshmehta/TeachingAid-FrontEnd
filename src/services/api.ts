@@ -63,6 +63,9 @@ export const folderAPI = {
   
   addPollToFolder: (folderId: string, pollCode: string) =>
     api.post(`/api/folder/${folderId}/polls/${pollCode}`),
+  
+  getPollsByFolder: (folderId: string) =>
+    api.get(`/api/folder/${folderId}/polls`),
 };
 
 export default api;
