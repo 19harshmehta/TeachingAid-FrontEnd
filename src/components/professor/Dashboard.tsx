@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI, folderAPI } from '@/services/api';
@@ -107,15 +108,40 @@ const Dashboard = () => {
 
   const fetchFolders = async () => {
     try {
+      console.log('Fetching folders...');
       const response = await folderAPI.getAll();
       const foldersData = response.data || [];
+      console.log('Folders data:', foldersData);
       setFolders(foldersData);
       
-      // Fetch polls for each folder
+      // Fetch polls for each folder using the specific API
       const folderPollsPromises = foldersData.map(async (folder: Folder) => {
         try {
+          console.log(`Fetching polls for folder ${folder._id}...`);
           const folderPollsResponse = await folderAPI.getPollsByFolder(folder._id);
-          return { folderId: folder._id, polls: folderPollsResponse.data || [] };
+          console.log(`Folder ${folder._id} polls response:`, folderPollsResponse);
+          
+          // Handle different response structures
+          let folderPolls = [];
+          if (folderPollsResponse.data) {
+            if (Array.isArray(folderPollsResponse.data)) {
+              folderPolls = folderPollsResponse.data;
+            } else if (folderPollsResponse.data.polls && Array.isArray(folderPollsResponse.data.polls)) {
+              folderPolls = folderPollsResponse.data.polls;
+            } else if (folderPollsResponse.data.data && Array.isArray(folderPollsResponse.data.data)) {
+              folderPolls = folderPollsResponse.data.data;
+            }
+          }
+          
+          // Process the polls to ensure proper structure
+          const processedFolderPolls = folderPolls.map(poll => ({
+            ...poll,
+            votes: Array.isArray(poll.votes) ? poll.votes : [],
+            topic: poll.topic || 'General'
+          }));
+          
+          console.log(`Processed polls for folder ${folder._id}:`, processedFolderPolls);
+          return { folderId: folder._id, polls: processedFolderPolls };
         } catch (error) {
           console.error(`Error fetching polls for folder ${folder._id}:`, error);
           return { folderId: folder._id, polls: [] };
@@ -129,6 +155,7 @@ const Dashboard = () => {
         newFolderPollsMap[folderId] = polls;
       });
       
+      console.log('Final folder polls map:', newFolderPollsMap);
       setFolderPollsMap(newFolderPollsMap);
     } catch (error) {
       console.error('Error fetching folders:', error);
@@ -200,48 +227,57 @@ const Dashboard = () => {
   };
 
   const availableTopics = useMemo(() => {
-    const topics = safePollsArray.map(poll => poll.topic || 'General');
+    let allPolls = safePollsArray;
+    
+    // If a folder is selected, get topics from folder polls
+    if (selectedFolder !== 'all' && folderPollsMap[selectedFolder]) {
+      allPolls = folderPollsMap[selectedFolder];
+    }
+    
+    const topics = allPolls.map(poll => poll.topic || 'General');
     return [...new Set(topics)].sort();
-  }, [safePollsArray]);
+  }, [safePollsArray, folderPollsMap, selectedFolder]);
 
   const filteredAndSortedPolls = useMemo(() => {
-    let filtered: Poll[] = [];
+    let pollsToFilter: Poll[] = [];
     
+    // Get the correct set of polls based on folder selection
     if (selectedFolder === 'all') {
-      filtered = safePollsArray;
+      pollsToFilter = safePollsArray;
     } else {
-      // Ensure we get polls from the folder-specific API and it's always an array
+      // Get polls from the specific folder
       const folderPolls = folderPollsMap[selectedFolder];
-      filtered = Array.isArray(folderPolls) ? folderPolls : [];
+      pollsToFilter = Array.isArray(folderPolls) ? folderPolls : [];
     }
     
-    // Apply search and topic filters - ensure filtered is an array before calling .filter()
-    if (Array.isArray(filtered)) {
-      filtered = filtered.filter(poll => {
-        const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
-        return matchesSearch && matchesTopic;
-      });
+    console.log(`Polls for ${selectedFolder}:`, pollsToFilter);
+    
+    // Apply search and topic filters
+    let filtered = pollsToFilter.filter(poll => {
+      const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
+      return matchesSearch && matchesTopic;
+    });
 
-      filtered.sort((a, b) => {
-        switch (sortBy) {
-          case 'newest':
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          case 'oldest':
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          case 'active':
-            if (a.isActive && !b.isActive) return -1;
-            if (!a.isActive && b.isActive) return 1;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          case 'closed':
-            if (!a.isActive && b.isActive) return -1;
-            if (a.isActive && !b.isActive) return 1;
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          default:
-            return 0;
-        }
-      });
-    }
+    // Sort the filtered polls
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'active':
+          if (a.isActive && !b.isActive) return -1;
+          if (!a.isActive && b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'closed':
+          if (!a.isActive && b.isActive) return -1;
+          if (a.isActive && !b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
 
     return filtered;
   }, [safePollsArray, folderPollsMap, selectedFolder, searchTerm, sortBy, topicFilter]);
@@ -538,6 +574,7 @@ const Dashboard = () => {
         onClose={() => setShowCreateModal(false)}
         onPollCreated={() => {
           fetchPolls();
+          fetchFolders();
           setShowCreateModal(false);
         }}
       />
