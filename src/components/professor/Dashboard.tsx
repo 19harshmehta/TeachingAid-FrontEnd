@@ -1,22 +1,16 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { pollAPI, folderAPI } from '@/services/api';
+import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderPlus, ChevronDown } from 'lucide-react';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
 import QRCodeModal from './QRCodeModal';
 import PollsSearchFilter from './PollsSearchFilter';
-import FolderManager from './FolderManager';
-import PollDragDrop from './PollDragDrop';
 
 interface Poll {
   _id: string;
@@ -30,19 +24,10 @@ interface Poll {
   allowMultiple?: boolean;
 }
 
-interface Folder {
-  _id: string;
-  name: string;
-  description: string;
-  polls: string[];
-  createdAt: string;
-}
-
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [polls, setPolls] = useState<Poll[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
@@ -51,16 +36,12 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [topicFilter, setTopicFilter] = useState('all');
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [showMoveModal, setShowMoveModal] = useState(false);
-  const [selectedPollForMove, setSelectedPollForMove] = useState<{ code: string; question: string } | null>(null);
 
   // Ensure polls is always an array
   const safePollsArray = Array.isArray(polls) ? polls : [];
 
   useEffect(() => {
     fetchPolls();
-    fetchFolders();
   }, []);
 
   const fetchPolls = async () => {
@@ -100,15 +81,6 @@ const Dashboard = () => {
       setPolls([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchFolders = async () => {
-    try {
-      const response = await folderAPI.getAll();
-      setFolders(response.data.folders || response.data || []);
-    } catch (error) {
-      console.error('Error fetching folders:', error);
     }
   };
 
@@ -165,48 +137,17 @@ const Dashboard = () => {
     ));
   };
 
-  const handleMoveToFolder = (pollCode: string, pollQuestion: string) => {
-    setSelectedPollForMove({ code: pollCode, question: pollQuestion });
-    // Refresh folders before showing modal
-    fetchFolders();
-    setShowMoveModal(true);
-  };
-
   const availableTopics = useMemo(() => {
     const topics = safePollsArray.map(poll => poll.topic || 'General');
     return [...new Set(topics)].sort();
   }, [safePollsArray]);
 
   const filteredAndSortedPolls = useMemo(() => {
-    console.log('Filtering polls with selectedFolder:', selectedFolder);
-    console.log('Available folders:', folders);
-    console.log('Available polls:', safePollsArray);
-
     let filtered = safePollsArray.filter(poll => {
       const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
-      
-      // Fix folder filtering logic
-      let matchesFolder = true;
-      if (selectedFolder !== null) {
-        const folder = folders.find(f => f._id === selectedFolder);
-        console.log('Selected folder:', folder);
-        console.log('Poll code:', poll.code);
-        console.log('Folder polls:', folder?.polls);
-        
-        if (folder && Array.isArray(folder.polls)) {
-          matchesFolder = folder.polls.includes(poll.code);
-        } else {
-          matchesFolder = false;
-        }
-        
-        console.log('Poll matches folder:', matchesFolder);
-      }
-      
-      return matchesSearch && matchesTopic && matchesFolder;
+      return matchesSearch && matchesTopic;
     });
-
-    console.log('Filtered polls:', filtered);
 
     filtered.sort((a, b) => {
       switch (sortBy) {
@@ -228,7 +169,7 @@ const Dashboard = () => {
     });
 
     return filtered;
-  }, [safePollsArray, searchTerm, sortBy, topicFilter, selectedFolder, folders]);
+  }, [safePollsArray, searchTerm, sortBy, topicFilter]);
 
   if (loading) {
     return (
@@ -335,46 +276,6 @@ const Dashboard = () => {
             <CardTitle className="text-lg sm:text-xl font-semibold">Your Polls</CardTitle>
           </CardHeader>
           <CardContent>
-            {/* Folder Dropdown */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Folders</h3>
-                <FolderManager onFolderCreated={fetchFolders} />
-              </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between bg-white/70 backdrop-blur-sm">
-                    {selectedFolder === null 
-                      ? "All Polls" 
-                      : folders.find(f => f._id === selectedFolder)?.name || "Select Folder"
-                    }
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full min-w-[200px] bg-white/95 backdrop-blur-sm border shadow-lg">
-                  <DropdownMenuItem
-                    onClick={() => setSelectedFolder(null)}
-                    className={selectedFolder === null ? "bg-purple-50" : ""}
-                  >
-                    All Polls ({safePollsArray.length})
-                  </DropdownMenuItem>
-                  {folders.map((folder) => {
-                    const pollCount = folder.polls?.length || 0;
-                    return (
-                      <DropdownMenuItem
-                        key={folder._id}
-                        onClick={() => setSelectedFolder(folder._id)}
-                        className={selectedFolder === folder._id ? "bg-purple-50" : ""}
-                      >
-                        {folder.name} ({pollCount})
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
             <PollsSearchFilter
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -389,7 +290,7 @@ const Dashboard = () => {
               <div className="text-center py-12">
                 <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || topicFilter !== 'all' || selectedFolder !== null ? 'No polls found matching your criteria' : 'No polls created yet'}
+                  {searchTerm || topicFilter !== 'all' ? 'No polls found matching your search' : 'No polls created yet'}
                 </p>
                 <Button
                   onClick={() => setShowCreateModal(true)}
@@ -443,16 +344,6 @@ const Dashboard = () => {
                       </div>
                       
                       <div className="flex gap-2 flex-wrap sm:flex-nowrap">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMoveToFolder(poll.code, poll.question)}
-                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
-                        >
-                          <FolderPlus className="h-4 w-4 sm:mr-0 mr-1" />
-                          <span className="sm:hidden">Move</span>
-                        </Button>
-
                         <Button
                           size="sm"
                           variant="outline"
@@ -519,18 +410,6 @@ const Dashboard = () => {
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
         pollCode={selectedPollForQR}
-      />
-
-      <PollDragDrop
-        isOpen={showMoveModal}
-        onClose={() => setShowMoveModal(false)}
-        pollCode={selectedPollForMove?.code || ''}
-        pollQuestion={selectedPollForMove?.question || ''}
-        folders={folders}
-        onPollMoved={() => {
-          fetchPolls();
-          fetchFolders();
-        }}
       />
     </div>
   );
