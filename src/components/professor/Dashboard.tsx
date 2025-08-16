@@ -68,29 +68,10 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { CalendarIcon } from "@radix-ui/react-icons"
 import { pollAPI, folderAPI } from '@/services/api';
-import { Folder as FolderType } from '@/types';
+import { Folder as FolderType, Poll } from '@/types';
 import QRCodeModal from './QRCodeModal';
 import MoveToFolderModal from './MoveToFolderModal';
 import PastResultsModal from './PastResultsModal';
-
-interface Poll {
-  _id: string;
-  question: string;
-  topic?: string;
-  options: string[];
-  votes: number[];
-  code: string;
-  createdBy: string;
-  isActive: boolean;
-  allowMultiple?: boolean;
-  createdAt: string;
-  history?: Array<{
-    votes: number[];
-    votedFingerprints: number;
-    timestamp: string;
-    _id: string;
-  }>;
-}
 
 const Dashboard = () => {
   const navigate = useNavigate();
