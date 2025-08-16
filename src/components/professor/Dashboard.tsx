@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI, folderAPI } from '@/services/api';
@@ -12,10 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderInput, Folder } from 'lucide-react';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderInput, Folder, History } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
+import PastResultsView from './PastResultsView';
 import QRCodeModal from './QRCodeModal';
 import PollsSearchFilter from './PollsSearchFilter';
 import FolderManager from './FolderManager';
@@ -31,6 +31,12 @@ interface Poll {
   createdAt: string;
   votes: number[];
   allowMultiple?: boolean;
+  history?: Array<{
+    votes: number[];
+    votedFingerprints: number;
+    timestamp: string;
+    _id: string;
+  }>;
 }
 
 interface Folder {
@@ -50,6 +56,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [viewingPastResults, setViewingPastResults] = useState<Poll | null>(null);
   const [showQRModal, setShowQRModal] = useState(false);
   const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -209,6 +216,10 @@ const Dashboard = () => {
     setActivePoll(poll);
   };
 
+  const handleViewPastResults = (poll: Poll) => {
+    setViewingPastResults(poll);
+  };
+
   const handleShowQR = (pollCode: string) => {
     setSelectedPollForQR(pollCode);
     setShowQRModal(true);
@@ -299,6 +310,15 @@ const Dashboard = () => {
         poll={activePoll} 
         onBack={() => setActivePoll(null)}
         onPollUpdated={handlePollUpdated}
+      />
+    );
+  }
+
+  if (viewingPastResults) {
+    return (
+      <PastResultsView 
+        poll={viewingPastResults} 
+        onBack={() => setViewingPastResults(null)}
       />
     );
   }
@@ -549,15 +569,27 @@ const Dashboard = () => {
                             </Button>
                           </>
                         ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleRelaunch(poll._id)}
-                            className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            <span className="hidden sm:inline">Relaunch</span>
-                            <span className="sm:hidden">Relaunch</span>
-                          </Button>
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleRelaunch(poll._id)}
+                              className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Relaunch</span>
+                              <span className="sm:hidden">Relaunch</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewPastResults(poll)}
+                              className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                            >
+                              <History className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">View Past Result</span>
+                              <span className="sm:hidden">Past Result</span>
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
