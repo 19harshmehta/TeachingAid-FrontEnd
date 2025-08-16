@@ -10,8 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Folder, FolderOpen, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { folderAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,35 +23,15 @@ interface Folder {
 }
 
 interface FolderManagerProps {
-  onFolderSelect: (folderId: string | null) => void;
-  selectedFolder: string | null;
+  onFolderCreated: () => void;
 }
 
-const FolderManager = ({ onFolderSelect, selectedFolder }: FolderManagerProps) => {
+const FolderManager = ({ onFolderCreated }: FolderManagerProps) => {
   const { toast } = useToast();
-  const [folders, setFolders] = useState<Folder[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchFolders();
-  }, []);
-
-  const fetchFolders = async () => {
-    try {
-      const response = await folderAPI.getAll();
-      setFolders(response.data.folders || response.data || []);
-    } catch (error) {
-      console.error('Error fetching folders:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch folders",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +57,7 @@ const FolderManager = ({ onFolderSelect, selectedFolder }: FolderManagerProps) =
       setName('');
       setDescription('');
       setShowCreateModal(false);
-      fetchFolders();
+      onFolderCreated();
     } catch (error) {
       console.error('Error creating folder:', error);
       toast({
@@ -92,43 +71,15 @@ const FolderManager = ({ onFolderSelect, selectedFolder }: FolderManagerProps) =
   };
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">Folders</h3>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          size="sm"
-          className="bg-gradient-to-r from-purple-600 to-pink-600"
-        >
-          <Plus className="h-4 w-4 mr-1" />
-          New Folder
-        </Button>
-      </div>
-
-      <div className="flex gap-2 flex-wrap mb-4">
-        <Button
-          variant={selectedFolder === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => onFolderSelect(null)}
-          className={selectedFolder === null ? "bg-gradient-to-r from-purple-600 to-pink-600" : ""}
-        >
-          <FolderOpen className="h-4 w-4 mr-1" />
-          All Polls
-        </Button>
-        
-        {folders.map((folder) => (
-          <Button
-            key={folder._id}
-            variant={selectedFolder === folder._id ? "default" : "outline"}
-            size="sm"
-            onClick={() => onFolderSelect(folder._id)}
-            className={selectedFolder === folder._id ? "bg-gradient-to-r from-purple-600 to-pink-600" : ""}
-          >
-            <Folder className="h-4 w-4 mr-1" />
-            {folder.name} ({folder.polls?.length || 0})
-          </Button>
-        ))}
-      </div>
+    <>
+      <Button
+        onClick={() => setShowCreateModal(true)}
+        size="sm"
+        className="bg-gradient-to-r from-purple-600 to-pink-600"
+      >
+        <Plus className="h-4 w-4 mr-1" />
+        New Folder
+      </Button>
 
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="max-w-md">
@@ -180,7 +131,7 @@ const FolderManager = ({ onFolderSelect, selectedFolder }: FolderManagerProps) =
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 
