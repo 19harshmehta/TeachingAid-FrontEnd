@@ -1,16 +1,16 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { pollAPI } from '@/services/api';
+import { pollAPI, folderAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderPlus } from 'lucide-react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
 import QRCodeModal from './QRCodeModal';
 import PollsSearchFilter from './PollsSearchFilter';
+import FolderManager from './FolderManager';
+import PollDragDrop from './PollDragDrop';
 
 interface Poll {
   _id: string;
@@ -24,10 +24,19 @@ interface Poll {
   allowMultiple?: boolean;
 }
 
+interface Folder {
+  _id: string;
+  name: string;
+  description: string;
+  polls: string[];
+  createdAt: string;
+}
+
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [polls, setPolls] = useState<Poll[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
@@ -36,12 +45,16 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [topicFilter, setTopicFilter] = useState('all');
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedPollForMove, setSelectedPollForMove] = useState<{ code: string; question: string } | null>(null);
 
   // Ensure polls is always an array
   const safePollsArray = Array.isArray(polls) ? polls : [];
 
   useEffect(() => {
     fetchPolls();
+    fetchFolders();
   }, []);
 
   const fetchPolls = async () => {
@@ -81,6 +94,15 @@ const Dashboard = () => {
       setPolls([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    try {
+      const response = await folderAPI.getAll();
+      setFolders(response.data.folders || response.data || []);
+    } catch (error) {
+      console.error('Error fetching folders:', error);
     }
   };
 
@@ -135,6 +157,11 @@ const Dashboard = () => {
     setPolls(polls.map(poll => 
       poll._id === updatedPoll._id ? updatedPoll : poll
     ));
+  };
+
+  const handleMoveToFolder = (pollCode: string, pollQuestion: string) => {
+    setSelectedPollForMove({ code: pollCode, question: pollQuestion });
+    setShowMoveModal(true);
   };
 
   const availableTopics = useMemo(() => {
@@ -276,6 +303,11 @@ const Dashboard = () => {
             <CardTitle className="text-lg sm:text-xl font-semibold">Your Polls</CardTitle>
           </CardHeader>
           <CardContent>
+            <FolderManager
+              onFolderSelect={setSelectedFolder}
+              selectedFolder={selectedFolder}
+            />
+
             <PollsSearchFilter
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -347,6 +379,16 @@ const Dashboard = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => handleMoveToFolder(poll.code, poll.question)}
+                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                        >
+                          <FolderPlus className="h-4 w-4 sm:mr-0 mr-1" />
+                          <span className="sm:hidden">Move</span>
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => handleShowQR(poll.code)}
                           className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
                         >
@@ -410,6 +452,18 @@ const Dashboard = () => {
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
         pollCode={selectedPollForQR}
+      />
+
+      <PollDragDrop
+        isOpen={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        pollCode={selectedPollForMove?.code || ''}
+        pollQuestion={selectedPollForMove?.question || ''}
+        folders={folders}
+        onPollMoved={() => {
+          fetchPolls();
+          fetchFolders();
+        }}
       />
     </div>
   );
