@@ -210,35 +210,38 @@ const Dashboard = () => {
     if (selectedFolder === 'all') {
       filtered = safePollsArray;
     } else {
-      // Use polls from the folder-specific API
-      filtered = folderPollsMap[selectedFolder] || [];
+      // Ensure we get polls from the folder-specific API and it's always an array
+      const folderPolls = folderPollsMap[selectedFolder];
+      filtered = Array.isArray(folderPolls) ? folderPolls : [];
     }
     
-    // Apply search and topic filters
-    filtered = filtered.filter(poll => {
-      const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
-      return matchesSearch && matchesTopic;
-    });
+    // Apply search and topic filters - ensure filtered is an array before calling .filter()
+    if (Array.isArray(filtered)) {
+      filtered = filtered.filter(poll => {
+        const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
+        return matchesSearch && matchesTopic;
+      });
 
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        case 'active':
-          if (a.isActive && !b.isActive) return -1;
-          if (!a.isActive && b.isActive) return 1;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'closed':
-          if (!a.isActive && b.isActive) return -1;
-          if (a.isActive && !b.isActive) return 1;
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        default:
-          return 0;
-      }
-    });
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case 'newest':
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          case 'oldest':
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          case 'active':
+            if (a.isActive && !b.isActive) return -1;
+            if (!a.isActive && b.isActive) return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          case 'closed':
+            if (!a.isActive && b.isActive) return -1;
+            if (a.isActive && !b.isActive) return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          default:
+            return 0;
+        }
+      });
+    }
 
     return filtered;
   }, [safePollsArray, folderPollsMap, selectedFolder, searchTerm, sortBy, topicFilter]);
