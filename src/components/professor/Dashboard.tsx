@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { pollAPI, folderAPI } from '@/services/api';
@@ -179,6 +178,10 @@ const Dashboard = () => {
   }, [safePollsArray]);
 
   const filteredAndSortedPolls = useMemo(() => {
+    console.log('Filtering polls with selectedFolder:', selectedFolder);
+    console.log('Available folders:', folders);
+    console.log('Available polls:', safePollsArray);
+
     let filtered = safePollsArray.filter(poll => {
       const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
@@ -187,11 +190,23 @@ const Dashboard = () => {
       let matchesFolder = true;
       if (selectedFolder !== null) {
         const folder = folders.find(f => f._id === selectedFolder);
-        matchesFolder = folder ? folder.polls.includes(poll.code) : false;
+        console.log('Selected folder:', folder);
+        console.log('Poll code:', poll.code);
+        console.log('Folder polls:', folder?.polls);
+        
+        if (folder && Array.isArray(folder.polls)) {
+          matchesFolder = folder.polls.includes(poll.code);
+        } else {
+          matchesFolder = false;
+        }
+        
+        console.log('Poll matches folder:', matchesFolder);
       }
       
       return matchesSearch && matchesTopic && matchesFolder;
     });
+
+    console.log('Filtered polls:', filtered);
 
     filtered.sort((a, b) => {
       switch (sortBy) {
