@@ -327,33 +327,39 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-main">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 animate-fade-in gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-              Welcome back, {user?.name}!
-            </h1>
-            <p className="text-gray-600 text-sm sm:text-base">Manage your polls and organize them in folders</p>
-          </div>
-          
-          <div className="flex gap-2 sm:gap-4 w-full sm:w-auto">
-            <FolderManager onFolderCreated={fetchFolders} />
+        <div className="flex flex-col gap-4 mb-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                Welcome back, {user?.name}!
+              </h1>
+              <p className="text-gray-600 text-sm sm:text-base">Manage your polls and organize them in folders</p>
+            </div>
             
-            <Button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 flex-1 sm:flex-none"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Poll
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={logout}
-              className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            {/* Button group with proper mobile responsiveness */}
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="flex gap-2">
+                <FolderManager onFolderCreated={fetchFolders} />
+                
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 flex-1 sm:flex-none"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden xs:inline">Create Poll</span>
+                  <span className="xs:hidden">Create</span>
+                </Button>
+              </div>
+              
+              <Button
+                variant="outline"
+                onClick={logout}
+                className="bg-white/70 backdrop-blur-sm w-full sm:w-auto"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -490,7 +496,7 @@ const Dashboard = () => {
                   return (
                     <div 
                       key={poll._id} 
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors gap-4"
+                      className="flex flex-col lg:flex-row lg:items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors gap-4"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
@@ -525,25 +531,25 @@ const Dashboard = () => {
                         </p>
                       </div>
                       
-                      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                      <div className="flex gap-2 flex-wrap lg:flex-nowrap">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleMovePoll(poll)}
-                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                          className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                         >
-                          <FolderInput className="h-4 w-4 sm:mr-0 mr-1" />
-                          <span className="sm:hidden">Move</span>
+                          <FolderInput className="h-4 w-4 lg:mr-0 mr-1" />
+                          <span className="lg:hidden truncate">Move</span>
                         </Button>
                         
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleShowQR(poll.code)}
-                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                          className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                         >
-                          <QrCode className="h-4 w-4 sm:mr-0 mr-1" />
-                          <span className="sm:hidden">QR</span>
+                          <QrCode className="h-4 w-4 lg:mr-0 mr-1" />
+                          <span className="lg:hidden truncate">QR</span>
                         </Button>
                         
                         {poll.isActive ? (
@@ -551,21 +557,20 @@ const Dashboard = () => {
                             <Button
                               size="sm"
                               onClick={() => handleViewLive(poll)}
-                              className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+                              className="bg-green-600 hover:bg-green-700 flex-1 lg:flex-none min-w-0"
                             >
                               <Eye className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">View Live</span>
-                              <span className="sm:hidden">Live</span>
+                              <span className="hidden xl:inline">View Live</span>
+                              <span className="xl:hidden truncate">Live</span>
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
                               onClick={() => handleClosePoll(poll.code)}
-                              className="flex-1 sm:flex-none"
+                              className="flex-1 lg:flex-none min-w-0"
                             >
                               <X className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">Close</span>
-                              <span className="sm:hidden">Close</span>
+                              <span className="truncate">Close</span>
                             </Button>
                           </>
                         ) : (
@@ -573,21 +578,20 @@ const Dashboard = () => {
                             <Button
                               size="sm"
                               onClick={() => handleRelaunch(poll._id)}
-                              className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                              className="bg-blue-600 hover:bg-blue-700 flex-1 lg:flex-none min-w-0"
                             >
                               <Play className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">Relaunch</span>
-                              <span className="sm:hidden">Relaunch</span>
+                              <span className="truncate">Relaunch</span>
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleViewPastResults(poll)}
-                              className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                              className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                             >
                               <History className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">View Past Result</span>
-                              <span className="sm:hidden">Past Result</span>
+                              <span className="hidden xl:inline">View Past Result</span>
+                              <span className="xl:hidden truncate">Past Result</span>
                             </Button>
                           </>
                         )}
