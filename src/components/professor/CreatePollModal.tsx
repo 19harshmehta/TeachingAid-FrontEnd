@@ -134,66 +134,81 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-border">
-        <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-semibold text-foreground">Create New Poll</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 shadow-2xl">
+        <DialogHeader className="pb-6 border-b border-purple-200">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
+            Create New Poll
+          </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
+        <div className="space-y-8 p-2">
           {/* Single Poll Creation */}
-          <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
-            <h3 className="text-base font-medium flex items-center gap-2 text-card-foreground">
-              <Plus className="h-4 w-4 text-primary" />
+          <div className="space-y-6 p-6 rounded-xl bg-gradient-to-r from-white/90 to-purple-50/80 backdrop-blur-sm border-2 border-purple-200 shadow-lg">
+            <h3 className="text-lg font-semibold flex items-center gap-3 text-purple-800">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
+                <Plus className="h-5 w-5 text-white" />
+              </div>
               Create Single Poll
             </h3>
             
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="question" className="text-sm font-medium text-foreground">Question</Label>
+            <div className="grid gap-6">
+              <div className="grid gap-3">
+                <Label htmlFor="question" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
+                  Question
+                </Label>
                 <Textarea
                   id="question"
                   placeholder="Enter your poll question..."
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  className="min-h-[80px] bg-background border-input"
+                  className="min-h-[100px] bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg text-gray-800"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="topic" className="text-sm font-medium text-foreground">Topic</Label>
+              <div className="grid gap-3">
+                <Label htmlFor="topic" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"></div>
+                  Topic
+                </Label>
                 <Input
                   id="topic"
                   placeholder="Enter poll topic..."
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
-                  className="bg-background border-input"
+                  className="bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg h-12"
                 />
               </div>
 
-              <div className="grid gap-3">
-                <Label className="text-sm font-medium text-foreground">Options</Label>
+              <div className="grid gap-4">
+                <Label className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                  Options
+                </Label>
                 {options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Input
-                      type="text"
-                      placeholder={`Option ${index + 1}`}
-                      value={option}
-                      onChange={(e) => {
-                        const newOptions = [...options];
-                        newOptions[index] = e.target.value;
-                        setOptions(newOptions);
-                      }}
-                      className="bg-background border-input"
-                    />
+                  <div key={index} className="flex items-center space-x-3">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder={`Option ${index + 1}`}
+                        value={option}
+                        onChange={(e) => {
+                          const newOptions = [...options];
+                          newOptions[index] = e.target.value;
+                          setOptions(newOptions);
+                        }}
+                        className="bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg h-12"
+                      />
+                    </div>
                     {options.length > 2 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => removeOption(index)}
-                        className="hover:bg-destructive/10 hover:text-destructive"
+                        className="hover:bg-red-100 hover:text-red-600 rounded-lg h-12 w-12 border-2 border-transparent hover:border-red-200"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-5 w-5" />
                       </Button>
                     )}
                   </div>
@@ -203,15 +218,16 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
                   variant="outline" 
                   size="sm" 
                   onClick={addOption}
-                  className="w-fit border-dashed"
+                  className="w-fit border-2 border-dashed border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400 rounded-lg h-10"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Option
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between p-3 rounded-md bg-muted">
-                <Label htmlFor="allowMultiple" className="text-sm font-medium text-foreground">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-100/80 to-pink-100/80 border-2 border-purple-200">
+                <Label htmlFor="allowMultiple" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500"></div>
                   Allow Multiple Selections
                 </Label>
                 <Switch
@@ -225,39 +241,42 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
             <Button 
               onClick={handleSubmit} 
               disabled={isLoading || !question.trim() || !topic.trim() || options.some(opt => !opt.trim())} 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
             >
               {isLoading ? 'Creating...' : 'Create Poll'}
             </Button>
           </div>
 
-          <Separator className="bg-border" />
+          <Separator className="bg-gradient-to-r from-purple-300 to-pink-300 h-0.5" />
 
           {/* Bulk Upload Section */}
-          <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
-            <h3 className="text-base font-medium flex items-center gap-2 text-card-foreground">
-              <Upload className="h-4 w-4 text-primary" />
+          <div className="space-y-6 p-6 rounded-xl bg-gradient-to-r from-white/90 to-blue-50/80 backdrop-blur-sm border-2 border-blue-200 shadow-lg">
+            <h3 className="text-lg font-semibold flex items-center gap-3 text-blue-800">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500">
+                <Upload className="h-5 w-5 text-white" />
+              </div>
               Bulk Upload from CSV
             </h3>
             
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border-2 border-blue-200">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={downloadTemplate}
-                  className="flex items-center gap-2 shrink-0"
+                  className="flex items-center gap-2 shrink-0 border-2 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 rounded-lg h-10"
                 >
                   <Download className="h-4 w-4" />
                   Download Template
                 </Button>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-sm text-blue-700 font-medium">
                   Download the CSV template to see the required format for bulk poll creation
                 </div>
               </div>
               
-              <div className="space-y-3">
-                <Label htmlFor="csv-file" className="text-sm font-medium text-foreground">
+              <div className="space-y-4">
+                <Label htmlFor="csv-file" className="text-sm font-semibold text-blue-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"></div>
                   Upload CSV File
                 </Label>
                 <Input
@@ -265,10 +284,10 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
                   type="file"
                   accept=".csv"
                   onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="cursor-pointer bg-background border-input file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-3 file:py-1 file:text-xs"
+                  className="cursor-pointer bg-white/80 border-2 border-blue-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 rounded-lg h-12 file:bg-gradient-to-r file:from-blue-500 file:to-cyan-500 file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:text-sm file:font-medium file:mr-4"
                 />
                 {csvFile && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2 rounded-lg border border-blue-200">
                     Selected: {csvFile.name}
                   </p>
                 )}
@@ -277,7 +296,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
               <Button
                 onClick={handleCsvUpload}
                 disabled={!csvFile || isUploadingCsv}
-                className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
+                className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 {isUploadingCsv ? 'Uploading...' : 'Upload CSV'}
               </Button>

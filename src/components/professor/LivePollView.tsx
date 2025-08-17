@@ -296,11 +296,11 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <Button
               variant="ghost"
               onClick={onBack}
-              className="text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+              className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 self-start"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -314,129 +314,145 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
             </div>
           </div>
 
-          {/* Settings Panel - As shown in your image */}
+          {/* Settings Panel - Improved responsiveness */}
           <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg mb-6">
             <CardContent className="p-4">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex flex-col sm:flex-row items-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Poll Code:</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={copyPollCode}
-                      className="bg-white/70 backdrop-blur-sm hover:bg-white/90 font-mono text-lg font-bold h-8"
-                    >
-                      {currentPoll.code}
-                      {copied ? (
-                        <Check className="h-4 w-4 ml-2 text-green-600" />
-                      ) : (
-                        <Copy className="h-4 w-4 ml-2" />
-                      )}
-                    </Button>
+              <div className="space-y-4">
+                {/* First row - Poll info */}
+                <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 text-sm">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-600">Poll Code:</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyPollCode}
+                        className="bg-white/70 backdrop-blur-sm hover:bg-white/90 font-mono text-lg font-bold h-8"
+                      >
+                        {currentPoll.code}
+                        {copied ? (
+                          <Check className="h-4 w-4 ml-2 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4 ml-2" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-600">Status:</span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        currentPoll.isActive 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {currentPoll.isActive ? 'Active' : 'Closed'}
+                      </span>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-600">Status:</span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      currentPoll.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {currentPoll.isActive ? 'Active' : 'Closed'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {socketConnected ? (
-                      <>
-                        <Wifi className="h-4 w-4 text-green-600" />
-                        <span className="text-green-600 font-medium">Live Connected</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="h-4 w-4 text-orange-500" />
-                        <span className="text-orange-500 font-medium">Polling Mode</span>
-                      </>
-                    )}
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={manualRefresh}
-                    disabled={isRefreshing}
-                    className="h-8 px-3 text-sm"
-                  >
-                    <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </Button>
-
-                  <span className="text-gray-500">Updated: {lastUpdate.toLocaleTimeString()}</span>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setShowQRModal(true)}
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
-                  >
-                    <QrCode className="h-4 w-4 mr-2" />
-                    Show QR Code
-                  </Button>
-                  
-                  {/* Show View Past Result button if poll has history */}
-                  {currentPoll.history && currentPoll.history.length > 0 && (
-                    <Button
-                      onClick={() => setViewingPastResults(true)}
-                      size="sm"
-                      variant="outline"
-                      className="bg-white/70 backdrop-blur-sm"
-                    >
-                      <History className="h-4 w-4 mr-2" />
-                      View Past Result
-                    </Button>
-                  )}
-                  
-                  {currentPoll.isActive ? (
-                    <Button
-                      onClick={handleClosePoll}
-                      disabled={isClosing}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      {isClosing ? (
+                {/* Second row - Connection status and controls */}
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      {socketConnected ? (
                         <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Closing...
+                          <Wifi className="h-4 w-4 text-green-600" />
+                          <span className="text-green-600 font-medium">Live Connected</span>
                         </>
                       ) : (
                         <>
-                          <X className="h-4 w-4 mr-2" />
-                          Close Poll
+                          <WifiOff className="h-4 w-4 text-orange-500" />
+                          <span className="text-orange-500 font-medium">Polling Mode</span>
                         </>
                       )}
-                    </Button>
-                  ) : (
+                    </div>
+
                     <Button
-                      onClick={handleRelaunchPoll}
-                      disabled={isRelaunching}
+                      variant="ghost"
                       size="sm"
-                      className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                      onClick={manualRefresh}
+                      disabled={isRefreshing}
+                      className="h-8 px-3 text-sm"
                     >
-                      {isRelaunching ? (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          Relaunching...
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          Relaunch Poll
-                        </>
-                      )}
+                      <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      Refresh
                     </Button>
-                  )}
+
+                    <span className="text-gray-500 text-xs">Updated: {lastUpdate.toLocaleTimeString()}</span>
+                  </div>
+
+                  {/* Action buttons with better responsiveness */}
+                  <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                    <Button
+                      onClick={() => setShowQRModal(true)}
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 flex-1 sm:flex-none"
+                    >
+                      <QrCode className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">Show QR Code</span>
+                      <span className="sm:hidden">QR</span>
+                    </Button>
+                    
+                    {/* Show View Past Result button if poll has history */}
+                    {currentPoll.history && currentPoll.history.length > 0 && (
+                      <Button
+                        onClick={() => setViewingPastResults(true)}
+                        size="sm"
+                        variant="outline"
+                        className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                      >
+                        <History className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">View Past Result</span>
+                        <span className="sm:hidden">History</span>
+                      </Button>
+                    )}
+                    
+                    {currentPoll.isActive ? (
+                      <Button
+                        onClick={handleClosePoll}
+                        disabled={isClosing}
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 sm:flex-none"
+                      >
+                        {isClosing ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            <span className="hidden sm:inline">Closing...</span>
+                            <span className="sm:hidden">...</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="h-4 w-4 mr-2" />
+                            <span className="hidden sm:inline">Close Poll</span>
+                            <span className="sm:hidden">Close</span>
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleRelaunchPoll}
+                        disabled={isRelaunching}
+                        size="sm"
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 flex-1 sm:flex-none"
+                      >
+                        {isRelaunching ? (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                            <span className="hidden sm:inline">Relaunching...</span>
+                            <span className="sm:hidden">...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4 mr-2" />
+                            <span className="hidden sm:inline">Relaunch Poll</span>
+                            <span className="sm:hidden">Relaunch</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -593,7 +609,7 @@ const LivePollView: React.FC<LivePollViewProps> = ({ poll, onBack, onPollUpdated
                 <h3 className="text-lg font-semibold mb-2 text-purple-800">
                   Students can join at:
                 </h3>
-                <p className="text-xl font-mono font-bold text-purple-700 mb-2">
+                <p className="text-xl font-mono font-bold text-purple-700 mb-2 break-all">
                   https://instant-pulse.vercel.app/join
                 </p>
                 <p className="text-sm text-purple-600">
