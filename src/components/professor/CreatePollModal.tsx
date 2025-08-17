@@ -108,20 +108,13 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
   };
 
   const downloadTemplate = () => {
-    const csvContent = `question,topic,option1,option2,option3,option4,allowMultiple
-"What is your favorite color?","General","Red","Blue","Green","Yellow",false
-"Which programming language do you prefer?","Technology","JavaScript","Python","Java","C++",true`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'poll-template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
+  const link = document.createElement('a');
+  link.href = '/poll-template.csv';  // File path in your public folder
+  link.download = 'poll-template.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
   const handleClose = () => {
     setQuestion('');
