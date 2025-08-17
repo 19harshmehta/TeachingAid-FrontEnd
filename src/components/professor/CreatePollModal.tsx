@@ -1,19 +1,14 @@
-
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Plus, X } from 'lucide-react';
-import { pollAPI } from '@/services/api';
-import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Upload, Download, Plus } from "lucide-react";
+import { pollAPI } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface CreatePollModalProps {
   isOpen: boolean;
@@ -21,78 +16,110 @@ interface CreatePollModalProps {
   onPollCreated: () => void;
 }
 
-const CreatePollModal = ({ isOpen, onClose, onPollCreated }: CreatePollModalProps) => {
-  const { toast } = useToast();
+const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
   const [question, setQuestion] = useState('');
   const [topic, setTopic] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [allowMultiple, setAllowMultiple] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+  const { toast } = useToast();
 
-  const handleAddOption = () => {
-    setOptions([...options, '']);
-  };
-
-  const handleRemoveOption = (index: number) => {
-    if (options.length > 2) {
-      setOptions(options.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleOptionChange = (index: number, value: string) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!question.trim() || !topic.trim()) {
-      toast({
-        title: "Error",
-        description: "Please fill in both question and topic",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const validOptions = options.filter(opt => opt.trim() !== '');
-    if (validOptions.length < 2) {
-      toast({
-        title: "Error",
-        description: "Please provide at least 2 options",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
+  const handleSubmit = async () => {
+    setIsLoading(true);
     try {
-      const response = await pollAPI.create(question.trim(), topic.trim(), validOptions, allowMultiple);
+      await pollAPI.create(question, topic, options, allowMultiple);
       toast({
-        title: "Poll Created!",
-        description: `Poll code: ${response.data.code}`,
+        title: "Success",
+        description: "Poll created successfully!",
       });
-      
-      // Reset form
-      setQuestion('');
-      setTopic('');
-      setOptions(['', '']);
-      setAllowMultiple(false);
-      
       onPollCreated();
+      handleClose();
     } catch (error) {
-      console.error('Error creating poll:', error);
+      console.error("Error creating poll:", error);
       toast({
         title: "Error",
-        description: "Failed to create poll",
+        description: "Failed to create poll.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
+  };
+
+  const addOption = () => {
+    setOptions([...options, '']);
+  };
+
+  const removeOption = (index: number) => {
+    const newOptions = [...options];
+    newOptions.splice(index, 1);
+    setOptions(newOptions);
+  };
+
+  const handleCsvUpload = async () => {
+    if (!csvFile) {
+      toast({
+        title: "Error",
+        description: "Please select a CSV file first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingCsv(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', csvFile);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://teachingaid-backend.onrender.com'}/api/poll/bulk-create/csv`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload CSV');
+      }
+
+      const result = await response.json();
+      
+      toast({
+        title: "Success",
+        description: `Successfully created ${result.pollsCreated || 'multiple'} polls from CSV`,
+      });
+
+      onPollCreated();
+      handleClose();
+    } catch (error) {
+      console.error('Error uploading CSV:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload CSV file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCsv(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csvContent = `question,topic,option1,option2,option3,option4,allowMultiple
+"What is your favorite color?","General","Red","Blue","Green","Yellow",false
+"Which programming language do you prefer?","Technology","JavaScript","Python","Java","C++",true`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'poll-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   const handleClose = () => {
@@ -100,121 +127,149 @@ const CreatePollModal = ({ isOpen, onClose, onPollCreated }: CreatePollModalProp
     setTopic('');
     setOptions(['', '']);
     setAllowMultiple(false);
+    setCsvFile(null);
     onClose();
-  };
-
-  const handleAllowMultipleChange = (checked: boolean | "indeterminate") => {
-    setAllowMultiple(checked === true);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Poll</DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="topic">Topic</Label>
-            <Input
-              id="topic"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g., Programming, Science, General"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="question">Question</Label>
-            <Textarea
-              id="question"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Enter your poll question here. You can use multiple lines and include code snippets."
-              required
-              rows={4}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-gray-500">
-              Supports multiline text and code snippets. Use proper formatting for better readability.
-            </p>
-          </div>
-
+        <div className="space-y-6">
+          {/* Single Poll Creation */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label>Options</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddOption}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Option
-              </Button>
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Create Single Poll
+            </h3>
+            
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="question">Question</Label>
+                <Input
+                  id="question"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="topic">Topic</Label>
+                <Input
+                  id="topic"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Options</Label>
+                {options.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <Input
+                      type="text"
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...options];
+                        newOptions[index] = e.target.value;
+                        setOptions(newOptions);
+                      }}
+                    />
+                    {options.length > 2 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeOption(index)}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="h-4 w-4"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 01-7.5 0"
+                          />
+                        </svg>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                  Add Option
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="allowMultiple">Allow Multiple Selections</Label>
+                <Switch
+                  id="allowMultiple"
+                  checked={allowMultiple}
+                  onCheckedChange={(checked) => setAllowMultiple(checked)}
+                />
+              </div>
             </div>
             
-            {options.map((option, index) => (
-              <div key={index} className="flex gap-2">
-                <div className="flex-1">
-                  <Textarea
-                    value={option}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    placeholder={`Option ${index + 1} (supports multiline and code)`}
-                    rows={2}
-                    className="font-mono text-sm"
-                  />
-                </div>
-                {options.length > 2 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleRemoveOption(index)}
-                    className="mt-1"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+            <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
+              {isLoading ? 'Creating...' : 'Create Poll'}
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Bulk Upload Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Bulk Upload from CSV
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Template
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Download CSV template to see the required format
+                </span>
               </div>
-            ))}
-            <p className="text-xs text-gray-500">
-              Each option supports multiline text and code snippets.
-            </p>
+              
+              <div className="space-y-2">
+                <Label htmlFor="csv-file">Upload CSV File</Label>
+                <Input
+                  id="csv-file"
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                  className="cursor-pointer"
+                />
+              </div>
+              
+              <Button
+                onClick={handleCsvUpload}
+                disabled={!csvFile || isUploadingCsv}
+                className="w-full"
+                variant="secondary"
+              >
+                {isUploadingCsv ? 'Uploading...' : 'Upload CSV'}
+              </Button>
+            </div>
           </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="allowMultiple"
-              checked={allowMultiple}
-              onCheckedChange={handleAllowMultipleChange}
-            />
-            <Label htmlFor="allowMultiple" className="text-sm">
-              Allow multiple selections
-            </Label>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={loading}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600"
-            >
-              {loading ? 'Creating...' : 'Create Poll'}
-            </Button>
-          </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
