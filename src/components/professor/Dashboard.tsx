@@ -1,18 +1,25 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { BarChart3, Users, Play, Eye, FolderOpen, Plus, LogOut, Folder, Vote } from 'lucide-react';
-import { pollAPI, folderAPI } from '@/services/api';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { pollAPI, folderAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderInput, Folder, History } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
+import PastResultsView from './PastResultsView';
+import QRCodeModal from './QRCodeModal';
+import PollsSearchFilter from './PollsSearchFilter';
 import FolderManager from './FolderManager';
 import MovePollToFolder from './MovePollToFolder';
-import PollsSearchFilter from './PollsSearchFilter';
-import PastResultsView from './PastResultsView';
 
 interface Poll {
   _id: string;
@@ -21,10 +28,9 @@ interface Poll {
   options: string[];
   code: string;
   isActive: boolean;
+  createdAt: string;
   votes: number[];
   allowMultiple?: boolean;
-  createdAt: string;
-  folder?: string;
   history?: Array<{
     votes: number[];
     votedFingerprints: number;
@@ -37,148 +43,273 @@ interface Folder {
   _id: string;
   name: string;
   description?: string;
-  pollCount: number;
+  polls: string[];
 }
 
-const Dashboard: React.FC = () => {
-  const [polls, setPolls] = useState<Poll[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showFolderManager, setShowFolderManager] = useState(false);
-  const [viewingPoll, setViewingPoll] = useState<Poll | null>(null);
-  const [viewingPastResults, setViewingPastResults] = useState<Poll | null>(null);
-  const [pollToMove, setPollToMove] = useState<Poll | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFolder, setSelectedFolder] = useState('all');
-  const [sortBy, setSortBy] = useState('createdAt');
-  const [relaunchingId, setRelaunchingId] = useState<string | null>(null);
+const Dashboard = () => {
   const { user, logout } = useAuth();
   const { toast } = useToast();
+  const [polls, setPolls] = useState<Poll[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [folderPollsMap, setFolderPollsMap] = useState<Record<string, Poll[]>>({});
+  const [selectedFolder, setSelectedFolder] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [viewingPastResults, setViewingPastResults] = useState<Poll | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedPollForQR, setSelectedPollForQR] = useState<string>('');
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [selectedPollForMove, setSelectedPollForMove] = useState<{ code: string; question: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [topicFilter, setTopicFilter] = useState('all');
 
-  const fetchPolls = async () => {
-    setIsLoading(true);
-    try {
-      const response = await pollAPI.getMyPolls();
-      setPolls(response.data);
-    } catch (error) {
-      console.error("Error fetching polls:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch polls.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchFolders = async () => {
-    try {
-      const response = await folderAPI.getAll();
-      setFolders(response.data);
-    } catch (error) {
-      console.error("Error fetching folders:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch folders.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Ensure polls is always an array
+  const safePollsArray = Array.isArray(polls) ? polls : [];
 
   useEffect(() => {
     fetchPolls();
     fetchFolders();
   }, []);
 
+  const fetchPolls = async () => {
+    try {
+      console.log('Fetching polls...');
+      const response = await pollAPI.getMyPolls();
+      console.log('API Response:', response);
+      
+      let pollsData = [];
+      if (Array.isArray(response.data)) {
+        pollsData = response.data;
+      } else if (response.data && Array.isArray(response.data.polls)) {
+        pollsData = response.data.polls;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        pollsData = response.data.data;
+      } else {
+        console.warn('Unexpected response structure:', response.data);
+        pollsData = [];
+      }
+      
+      console.log('Processed polls data:', pollsData);
+      
+      const processedPolls = pollsData.map(poll => ({
+        ...poll,
+        votes: Array.isArray(poll.votes) ? poll.votes : [],
+        topic: poll.topic || 'General'
+      }));
+      
+      setPolls(processedPolls);
+    } catch (error) {
+      console.error('Error fetching polls:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch polls",
+        variant: "destructive",
+      });
+      setPolls([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    try {
+      console.log('Fetching folders...');
+      const response = await folderAPI.getAll();
+      const foldersData = response.data || [];
+      console.log('Folders data:', foldersData);
+      setFolders(foldersData);
+      
+      // Fetch polls for each folder using the specific API
+      const folderPollsPromises = foldersData.map(async (folder: Folder) => {
+        try {
+          console.log(`Fetching polls for folder ${folder._id}...`);
+          const folderPollsResponse = await folderAPI.getPollsByFolder(folder._id);
+          console.log(`Folder ${folder._id} polls response:`, folderPollsResponse);
+          
+          // Handle different response structures
+          let folderPolls = [];
+          if (folderPollsResponse.data) {
+            if (Array.isArray(folderPollsResponse.data)) {
+              folderPolls = folderPollsResponse.data;
+            } else if (folderPollsResponse.data.polls && Array.isArray(folderPollsResponse.data.polls)) {
+              folderPolls = folderPollsResponse.data.polls;
+            } else if (folderPollsResponse.data.data && Array.isArray(folderPollsResponse.data.data)) {
+              folderPolls = folderPollsResponse.data.data;
+            }
+          }
+          
+          // Process the polls to ensure proper structure
+          const processedFolderPolls = folderPolls.map(poll => ({
+            ...poll,
+            votes: Array.isArray(poll.votes) ? poll.votes : [],
+            topic: poll.topic || 'General'
+          }));
+          
+          console.log(`Processed polls for folder ${folder._id}:`, processedFolderPolls);
+          return { folderId: folder._id, polls: processedFolderPolls };
+        } catch (error) {
+          console.error(`Error fetching polls for folder ${folder._id}:`, error);
+          return { folderId: folder._id, polls: [] };
+        }
+      });
+      
+      const folderPollsResults = await Promise.all(folderPollsPromises);
+      const newFolderPollsMap: Record<string, Poll[]> = {};
+      
+      folderPollsResults.forEach(({ folderId, polls }) => {
+        newFolderPollsMap[folderId] = polls;
+      });
+      
+      console.log('Final folder polls map:', newFolderPollsMap);
+      setFolderPollsMap(newFolderPollsMap);
+    } catch (error) {
+      console.error('Error fetching folders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch folders",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRelaunch = async (pollId: string) => {
+    try {
+      console.log('Relaunching poll:', pollId);
+      const response = await pollAPI.relaunch(pollId);
+      console.log('Relaunch response:', response);
+      toast({
+        title: "Poll Relaunched!",
+        description: `Poll code: ${response.data.code}`,
+      });
+      fetchPolls();
+    } catch (error) {
+      console.error('Error relaunching poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to relaunch poll",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClosePoll = async (pollCode: string) => {
+    try {
+      await pollAPI.closePoll(pollCode);
+      toast({
+        title: "Poll Closed",
+        description: "Poll has been closed successfully",
+      });
+      fetchPolls();
+    } catch (error) {
+      console.error('Error closing poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to close poll",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewLive = (poll: Poll) => {
-    setViewingPoll(poll);
+    setActivePoll(poll);
   };
 
   const handleViewPastResults = (poll: Poll) => {
     setViewingPastResults(poll);
   };
 
-  const handleRelaunch = async (pollId: string) => {
-    setRelaunchingId(pollId);
-    try {
-      await pollAPI.relaunch(pollId);
-      setPolls(polls.map(poll =>
-        poll._id === pollId ? { ...poll, isActive: true } : poll
-      ));
-      toast({
-        title: "Poll Relaunched",
-        description: "The poll has been relaunched successfully.",
-      });
-    } catch (error) {
-      console.error("Error relaunching poll:", error);
-      toast({
-        title: "Error",
-        description: "Failed to relaunch the poll.",
-        variant: "destructive",
-      });
-    } finally {
-      setRelaunchingId(null);
+  const handleShowQR = (pollCode: string) => {
+    setSelectedPollForQR(pollCode);
+    setShowQRModal(true);
+  };
+
+  const handleMovePoll = async (poll: Poll) => {
+    await fetchFolders(); // Refresh folders before showing modal
+    setSelectedPollForMove({ code: poll.code, question: poll.question });
+    setShowMoveModal(true);
+  };
+
+  const handlePollUpdated = (updatedPoll: Poll) => {
+    setPolls(polls.map(poll => 
+      poll._id === updatedPoll._id ? updatedPoll : poll
+    ));
+  };
+
+  const availableTopics = useMemo(() => {
+    let allPolls = safePollsArray;
+    
+    // If a folder is selected, get topics from folder polls
+    if (selectedFolder !== 'all' && folderPollsMap[selectedFolder]) {
+      allPolls = folderPollsMap[selectedFolder];
     }
-  };
+    
+    const topics = allPolls.map(poll => poll.topic || 'General');
+    return [...new Set(topics)].sort();
+  }, [safePollsArray, folderPollsMap, selectedFolder]);
 
-  const handleMoveToFolder = (poll: Poll) => {
-    setPollToMove(poll);
-  };
-
-  const activePolls = polls.filter(poll => poll.isActive).length;
-  const totalVotes = polls.reduce((sum, poll) => {
-    return sum + poll.votes.reduce((pollSum, vote) => pollSum + vote, 0);
-  }, 0);
-
-  // Get available topics for filtering
-  const availableTopics = Array.from(new Set(polls.map(poll => poll.topic).filter(Boolean))) as string[];
-
-  const filteredPolls = polls
-    .filter(poll => {
-      const searchTermLower = searchTerm.toLowerCase();
-      const questionMatch = poll.question.toLowerCase().includes(searchTermLower);
-      const topicMatch = poll.topic?.toLowerCase().includes(searchTermLower);
-      const codeMatch = poll.code.toLowerCase().includes(searchTermLower);
-      
-      let folderMatch = true;
-      if (selectedFolder !== 'all') {
-        folderMatch = poll.folder === selectedFolder;
-      }
-
-      return folderMatch && (questionMatch || topicMatch || codeMatch);
-    })
-    .sort((a, b) => {
-      if (sortBy === 'createdAt' || sortBy === 'newest') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else if (sortBy === 'oldest') {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      } else if (sortBy === 'votes') {
-        const totalVotesA = a.votes.reduce((sum, vote) => sum + vote, 0);
-        const totalVotesB = b.votes.reduce((sum, vote) => sum + vote, 0);
-        return totalVotesB - totalVotesA;
-      } else if (sortBy === 'active') {
-        return b.isActive ? 1 : -1;
-      } else if (sortBy === 'closed') {
-        return a.isActive ? 1 : -1;
-      }
-      return 0;
+  const filteredAndSortedPolls = useMemo(() => {
+    let pollsToFilter: Poll[] = [];
+    
+    // Get the correct set of polls based on folder selection
+    if (selectedFolder === 'all') {
+      pollsToFilter = safePollsArray;
+    } else {
+      // Get polls from the specific folder
+      const folderPolls = folderPollsMap[selectedFolder];
+      pollsToFilter = Array.isArray(folderPolls) ? folderPolls : [];
+    }
+    
+    console.log(`Polls for ${selectedFolder}:`, pollsToFilter);
+    
+    // Apply search and topic filters
+    let filtered = pollsToFilter.filter(poll => {
+      const matchesSearch = poll.question.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesTopic = topicFilter === 'all' || poll.topic === topicFilter;
+      return matchesSearch && matchesTopic;
     });
 
-  const handleLogout = () => {
-    logout();
-  };
+    // Sort the filtered polls
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'active':
+          if (a.isActive && !b.isActive) return -1;
+          if (!a.isActive && b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'closed':
+          if (!a.isActive && b.isActive) return -1;
+          if (a.isActive && !b.isActive) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        default:
+          return 0;
+      }
+    });
 
-  if (viewingPoll) {
+    return filtered;
+  }, [safePollsArray, folderPollsMap, selectedFolder, searchTerm, sortBy, topicFilter]);
+
+  if (loading) {
     return (
-      <LivePollView
-        poll={viewingPoll}
-        onBack={() => setViewingPoll(null)}
-        onPollUpdated={(updatedPoll) => {
-          setPolls(polls.map(p => p._id === updatedPoll._id ? updatedPoll : p));
-          setViewingPoll(updatedPoll);
-        }}
+      <div className="min-h-screen bg-gradient-main flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (activePoll) {
+    return (
+      <LivePollView 
+        poll={activePoll} 
+        onBack={() => setActivePoll(null)}
+        onPollUpdated={handlePollUpdated}
       />
     );
   }
@@ -196,224 +327,311 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen bg-gradient-main">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 animate-fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-purple-800 mb-2">
-                Welcome back, {user?.name || 'Professor'}!
-              </h1>
-              <p className="text-purple-600">
-                Manage your polls and organize them in folders
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 animate-fade-in gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Welcome back, {user?.name}!
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">Manage your polls and organize them in folders</p>
+          </div>
+          
+          <div className="flex gap-2 sm:gap-4 w-full sm:w-auto">
+            <FolderManager onFolderCreated={fetchFolders} />
             
-            <div className="flex flex-wrap gap-2 sm:gap-3">
-              <Button
-                onClick={() => setShowFolderManager(true)}
-                variant="outline"
-                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-purple-200 text-purple-700 hover:text-purple-800 flex-shrink-0"
-              >
-                <Folder className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">New Folder</span>
-                <span className="sm:hidden">Folder</span>
-              </Button>
-              
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg flex-shrink-0"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Create Poll</span>
-                <span className="sm:hidden">Create</span>
-              </Button>
-              
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-red-200 text-red-600 hover:text-red-700 flex-shrink-0"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-                <span className="sm:hidden">Out</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Polls</p>
-                    <p className="text-2xl font-bold text-purple-700">{polls.length}</p>
-                  </div>
-                  <BarChart3 className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Active Polls</p>
-                    <p className="text-2xl font-bold text-green-700">{activePolls}</p>
-                  </div>
-                  <Play className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Folders</p>
-                    <p className="text-2xl font-bold text-blue-700">{folders.length}</p>
-                  </div>
-                  <FolderOpen className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Votes</p>
-                    <p className="text-2xl font-bold text-orange-700">{totalVotes}</p>
-                  </div>
-                  <Vote className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Search and Filter */}
-        <PollsSearchFilter
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          topicFilter={selectedFolder}
-          onTopicFilterChange={setSelectedFolder}
-          availableTopics={availableTopics}
-        />
-
-        {/* Polls Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredPolls.map((poll) => (
-            <Card
-              key={poll._id}
-              className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 flex-1 sm:flex-none"
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-2">
-                  <CardTitle className="text-lg font-semibold text-gray-800 line-clamp-2">
-                    {poll.question.length > 50 ? `${poll.question.substring(0, 50)}...` : poll.question}
-                  </CardTitle>
-                  <Badge
-                    variant={poll.isActive ? "default" : "secondary"}
-                    className={poll.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}
-                  >
-                    {poll.isActive ? "Active" : "Closed"}
-                  </Badge>
-                </div>
-                {poll.topic && (
-                  <p className="text-sm text-purple-600 font-medium">{poll.topic}</p>
-                )}
-              </CardHeader>
-              
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="text-sm text-gray-600">
-                    <p><span className="font-medium">Code:</span> {poll.code}</p>
-                    <p><span className="font-medium">Options:</span> {poll.options.length}</p>
-                    <p><span className="font-medium">Total Votes:</span> {poll.votes.reduce((sum, vote) => sum + vote, 0)}</p>
-                    <p><span className="font-medium">Created:</span> {new Date(poll.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  
-                  <div className="flex flex-col gap-2 pt-2">
-                    {poll.isActive ? (
-                      <Button
-                        onClick={() => handleViewLive(poll)}
-                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Live
-                      </Button>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => handleRelaunch(poll._id)}
-                          disabled={relaunchingId === poll._id}
-                          className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-sm"
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          Relaunch
-                        </Button>
-                        <Button
-                          onClick={() => handleViewPastResults(poll)}
-                          variant="outline"
-                          className="flex-1 bg-white/70 backdrop-blur-sm hover:bg-white/90 text-sm"
-                        >
-                          <BarChart3 className="h-4 w-4 mr-2" />
-                          Results
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              <Plus className="h-4 w-4 mr-2" />
+              Create Poll
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={logout}
+              className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
-        {filteredPolls.length === 0 && !isLoading && (
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-            <CardContent className="p-12 text-center">
-              <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-semibold mb-2 text-gray-600">No polls found</h3>
-              <p className="text-gray-500 mb-6">
-                {searchTerm || selectedFolder !== 'all' 
-                  ? 'Try adjusting your search or filter criteria.' 
-                  : 'Create your first poll to get started!'
-                }
-              </p>
-              {!searchTerm && selectedFolder === 'all' && (
-                <Button
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Poll
-                </Button>
-              )}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-slide-up">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Polls</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-800">{safePollsArray.length}</p>
+                </div>
+                <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+              </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Modals */}
-        <CreatePollModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onPollCreated={fetchPolls}
-        />
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-slide-up" style={{ animationDelay: '0.1s' }}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Active Polls</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-800">
+                    {safePollsArray.filter(p => p.isActive).length}
+                  </p>
+                </div>
+                <Play className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <FolderManager
-          onFolderCreated={fetchFolders}
-        />
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Folders</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-800">{folders.length}</p>
+                </div>
+                <Folder className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <MovePollToFolder
-          isOpen={!!pollToMove}
-          onClose={() => setPollToMove(null)}
-          pollCode={pollToMove?.code || ''}
-          pollQuestion={pollToMove?.question || ''}
-          onPollMoved={fetchPolls}
-        />
+          <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-slide-up" style={{ animationDelay: '0.3s' }}>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Votes</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-800">
+                    {safePollsArray.reduce((sum, poll) => {
+                      const pollVotes = Array.isArray(poll.votes) ? poll.votes : [];
+                      return sum + pollVotes.reduce((voteSum, count) => voteSum + count, 0);
+                    }, 0)}
+                  </p>
+                </div>
+                <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Folder Filter */}
+        <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-fade-in mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <Folder className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">Filter by Folder:</span>
+              </div>
+              <Select value={selectedFolder} onValueChange={setSelectedFolder}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Select folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Polls ({safePollsArray.length})</SelectItem>
+                  {folders.map((folder) => {
+                    const folderPollCount = folderPollsMap[folder._id]?.length || 0;
+                    return (
+                      <SelectItem key={folder._id} value={folder._id}>
+                        {folder.name} ({folderPollCount})
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Polls List */}
+        <Card className="bg-white/70 backdrop-blur-sm border-0 shadow-lg animate-fade-in">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl font-semibold">
+              {selectedFolder === 'all' ? 'All Polls' : folders.find(f => f._id === selectedFolder)?.name || 'Folder Polls'}
+              {selectedFolder !== 'all' && (
+                <span className="text-sm font-normal text-gray-600 ml-2">
+                  ({filteredAndSortedPolls.length} polls)
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PollsSearchFilter
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              topicFilter={topicFilter}
+              onTopicFilterChange={setTopicFilter}
+              availableTopics={availableTopics}
+            />
+            
+            {filteredAndSortedPolls.length === 0 ? (
+              <div className="text-center py-12">
+                <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || topicFilter !== 'all' || selectedFolder !== 'all' 
+                    ? 'No polls found matching your filters' 
+                    : 'No polls created yet'}
+                </p>
+                <Button
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-gradient-to-r from-purple-600 to-pink-600"
+                >
+                  Create Your First Poll
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredAndSortedPolls.map((poll) => {
+                  const pollVotes = Array.isArray(poll.votes) ? poll.votes : [];
+                  const totalVotes = pollVotes.reduce((sum, count) => sum + count, 0);
+                  
+                  return (
+                    <div 
+                      key={poll._id} 
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/50 rounded-lg hover:bg-white/70 transition-colors gap-4"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-800 truncate pr-2">{poll.question}</h3>
+                          <div className="flex gap-2 flex-wrap">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {poll.topic || 'General'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              poll.isActive 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {poll.isActive ? 'Active' : 'Closed'}
+                            </span>
+                            {poll.allowMultiple && (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Multiple
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-gray-600">
+                          <span>Code: <span className="font-mono">{poll.code}</span></span>
+                          <span className="hidden sm:inline">•</span>
+                          <span>{poll.options.length} options</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span>{totalVotes} votes</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Created: {new Date(poll.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      
+                      <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMovePoll(poll)}
+                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                        >
+                          <FolderInput className="h-4 w-4 sm:mr-0 mr-1" />
+                          <span className="sm:hidden">Move</span>
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleShowQR(poll.code)}
+                          className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                        >
+                          <QrCode className="h-4 w-4 sm:mr-0 mr-1" />
+                          <span className="sm:hidden">QR</span>
+                        </Button>
+                        
+                        {poll.isActive ? (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleViewLive(poll)}
+                              className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">View Live</span>
+                              <span className="sm:hidden">Live</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleClosePoll(poll.code)}
+                              className="flex-1 sm:flex-none"
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Close</span>
+                              <span className="sm:hidden">Close</span>
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              onClick={() => handleRelaunch(poll._id)}
+                              className="bg-blue-600 hover:bg-blue-700 flex-1 sm:flex-none"
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">Relaunch</span>
+                              <span className="sm:hidden">Relaunch</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleViewPastResults(poll)}
+                              className="bg-white/70 backdrop-blur-sm flex-1 sm:flex-none"
+                            >
+                              <History className="h-4 w-4 mr-1" />
+                              <span className="hidden sm:inline">View Past Result</span>
+                              <span className="sm:hidden">Past Result</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <CreatePollModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onPollCreated={() => {
+          fetchPolls();
+          fetchFolders();
+          setShowCreateModal(false);
+        }}
+      />
+
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        pollCode={selectedPollForQR}
+      />
+
+      {selectedPollForMove && (
+        <MovePollToFolder
+          isOpen={showMoveModal}
+          onClose={() => {
+            setShowMoveModal(false);
+            setSelectedPollForMove(null);
+          }}
+          pollCode={selectedPollForMove.code}
+          pollQuestion={selectedPollForMove.question}
+          onPollMoved={() => {
+            fetchPolls();
+            fetchFolders();
+          }}
+        />
+      )}
     </div>
   );
 };
