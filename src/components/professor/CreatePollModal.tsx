@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Download, Plus } from "lucide-react";
+import { Upload, Download, Plus, X } from "lucide-react";
 import { pollAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -133,50 +134,56 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create New Poll</DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-background border border-border">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-semibold text-foreground">Create New Poll</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Single Poll Creation */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Plus className="h-4 w-4" />
+          <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+            <h3 className="text-base font-medium flex items-center gap-2 text-card-foreground">
+              <Plus className="h-4 w-4 text-primary" />
               Create Single Poll
             </h3>
             
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="question">Question</Label>
-                <Input
+                <Label htmlFor="question" className="text-sm font-medium text-foreground">Question</Label>
+                <Textarea
                   id="question"
+                  placeholder="Enter your poll question..."
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
+                  className="min-h-[80px] bg-background border-input"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="topic">Topic</Label>
+                <Label htmlFor="topic" className="text-sm font-medium text-foreground">Topic</Label>
                 <Input
                   id="topic"
+                  placeholder="Enter poll topic..."
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
+                  className="bg-background border-input"
                 />
               </div>
 
-              <div className="grid gap-2">
-                <Label>Options</Label>
+              <div className="grid gap-3">
+                <Label className="text-sm font-medium text-foreground">Options</Label>
                 {options.map((option, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <Input
                       type="text"
+                      placeholder={`Option ${index + 1}`}
                       value={option}
                       onChange={(e) => {
                         const newOptions = [...options];
                         newOptions[index] = e.target.value;
                         setOptions(newOptions);
                       }}
+                      className="bg-background border-input"
                     />
                     {options.length > 2 && (
                       <Button
@@ -184,32 +191,29 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
                         variant="ghost"
                         size="icon"
                         onClick={() => removeOption(index)}
+                        className="hover:bg-destructive/10 hover:text-destructive"
                       >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="h-4 w-4"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 01-7.5 0"
-                          />
-                        </svg>
+                        <X className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
                 ))}
-                <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addOption}
+                  className="w-fit border-dashed"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
                   Add Option
                 </Button>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="allowMultiple">Allow Multiple Selections</Label>
+              <div className="flex items-center justify-between p-3 rounded-md bg-muted">
+                <Label htmlFor="allowMultiple" className="text-sm font-medium text-foreground">
+                  Allow Multiple Selections
+                </Label>
                 <Switch
                   id="allowMultiple"
                   checked={allowMultiple}
@@ -218,52 +222,62 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
               </div>
             </div>
             
-            <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isLoading || !question.trim() || !topic.trim() || options.some(opt => !opt.trim())} 
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
               {isLoading ? 'Creating...' : 'Create Poll'}
             </Button>
           </div>
 
-          <Separator />
+          <Separator className="bg-border" />
 
           {/* Bulk Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Upload className="h-4 w-4" />
+          <div className="space-y-4 p-4 rounded-lg border border-border bg-card">
+            <h3 className="text-base font-medium flex items-center gap-2 text-card-foreground">
+              <Upload className="h-4 w-4 text-primary" />
               Bulk Upload from CSV
             </h3>
             
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-3 rounded-md bg-muted/50">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={downloadTemplate}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 shrink-0"
                 >
                   <Download className="h-4 w-4" />
                   Download Template
                 </Button>
-                <span className="text-xs text-muted-foreground">
-                  Download CSV template to see the required format
-                </span>
+                <div className="text-xs text-muted-foreground">
+                  Download the CSV template to see the required format for bulk poll creation
+                </div>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="csv-file">Upload CSV File</Label>
+              <div className="space-y-3">
+                <Label htmlFor="csv-file" className="text-sm font-medium text-foreground">
+                  Upload CSV File
+                </Label>
                 <Input
                   id="csv-file"
                   type="file"
                   accept=".csv"
                   onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="cursor-pointer"
+                  className="cursor-pointer bg-background border-input file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-3 file:py-1 file:text-xs"
                 />
+                {csvFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {csvFile.name}
+                  </p>
+                )}
               </div>
               
               <Button
                 onClick={handleCsvUpload}
                 disabled={!csvFile || isUploadingCsv}
-                className="w-full"
-                variant="secondary"
+                className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground"
               >
                 {isUploadingCsv ? 'Uploading...' : 'Upload CSV'}
               </Button>
