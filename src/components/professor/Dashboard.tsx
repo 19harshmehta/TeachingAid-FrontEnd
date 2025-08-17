@@ -538,8 +538,8 @@ const Dashboard = () => {
                           onClick={() => handleMovePoll(poll)}
                           className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                         >
-                          <FolderInput className="h-4 w-4 lg:mr-0 mr-1" />
-                          <span className="lg:hidden truncate">Move</span>
+                          <FolderInput className="h-4 w-4" />
+                          <span className="hidden sm:inline ml-1">Move</span>
                         </Button>
                         
                         <Button
@@ -548,8 +548,8 @@ const Dashboard = () => {
                           onClick={() => handleShowQR(poll.code)}
                           className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                         >
-                          <QrCode className="h-4 w-4 lg:mr-0 mr-1" />
-                          <span className="lg:hidden truncate">QR</span>
+                          <QrCode className="h-4 w-4" />
+                          <span className="hidden sm:inline ml-1">QR</span>
                         </Button>
                         
                         {poll.isActive ? (
@@ -559,9 +559,8 @@ const Dashboard = () => {
                               onClick={() => handleViewLive(poll)}
                               className="bg-green-600 hover:bg-green-700 flex-1 lg:flex-none min-w-0"
                             >
-                              <Eye className="h-4 w-4 mr-1" />
-                              <span className="hidden xl:inline">View Live</span>
-                              <span className="xl:hidden truncate">Live</span>
+                              <Eye className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Live</span>
                             </Button>
                             <Button
                               size="sm"
@@ -569,8 +568,8 @@ const Dashboard = () => {
                               onClick={() => handleClosePoll(poll.code)}
                               className="flex-1 lg:flex-none min-w-0"
                             >
-                              <X className="h-4 w-4 mr-1" />
-                              <span className="truncate">Close</span>
+                              <X className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Close</span>
                             </Button>
                           </>
                         ) : (
@@ -580,8 +579,8 @@ const Dashboard = () => {
                               onClick={() => handleRelaunch(poll._id)}
                               className="bg-blue-600 hover:bg-blue-700 flex-1 lg:flex-none min-w-0"
                             >
-                              <Play className="h-4 w-4 mr-1" />
-                              <span className="truncate">Relaunch</span>
+                              <Play className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Relaunch</span>
                             </Button>
                             <Button
                               size="sm"
@@ -589,9 +588,8 @@ const Dashboard = () => {
                               onClick={() => handleViewPastResults(poll)}
                               className="bg-white/70 backdrop-blur-sm flex-1 lg:flex-none min-w-0"
                             >
-                              <History className="h-4 w-4 mr-1" />
-                              <span className="hidden xl:inline">View Past Result</span>
-                              <span className="xl:hidden truncate">Past Result</span>
+                              <History className="h-4 w-4" />
+                              <span className="hidden sm:inline ml-1">Results</span>
                             </Button>
                           </>
                         )}
