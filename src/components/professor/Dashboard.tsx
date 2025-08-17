@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, Users, Play, Eye, FolderOpen, Plus, LogOut, Folder, Vote } from 'lucide-react';
-import { pollAPI } from '@/services/api';
+import { pollAPI, folderAPI } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import CreatePollModal from './CreatePollModal';
@@ -35,6 +36,7 @@ interface Poll {
 interface Folder {
   _id: string;
   name: string;
+  description?: string;
   pollCount: number;
 }
 
@@ -57,7 +59,7 @@ const Dashboard: React.FC = () => {
   const fetchPolls = async () => {
     setIsLoading(true);
     try {
-      const response = await pollAPI.getAll();
+      const response = await pollAPI.getMyPolls();
       setPolls(response.data);
     } catch (error) {
       console.error("Error fetching polls:", error);
@@ -73,7 +75,7 @@ const Dashboard: React.FC = () => {
 
   const fetchFolders = async () => {
     try {
-      const response = await pollAPI.getFolders();
+      const response = await folderAPI.getAll();
       setFolders(response.data);
     } catch (error) {
       console.error("Error fetching folders:", error);
@@ -130,6 +132,9 @@ const Dashboard: React.FC = () => {
     return sum + poll.votes.reduce((pollSum, vote) => pollSum + vote, 0);
   }, 0);
 
+  // Get available topics for filtering
+  const availableTopics = Array.from(new Set(polls.map(poll => poll.topic).filter(Boolean))) as string[];
+
   const filteredPolls = polls
     .filter(poll => {
       const searchTermLower = searchTerm.toLowerCase();
@@ -145,12 +150,18 @@ const Dashboard: React.FC = () => {
       return folderMatch && (questionMatch || topicMatch || codeMatch);
     })
     .sort((a, b) => {
-      if (sortBy === 'createdAt') {
+      if (sortBy === 'createdAt' || sortBy === 'newest') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (sortBy === 'oldest') {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       } else if (sortBy === 'votes') {
         const totalVotesA = a.votes.reduce((sum, vote) => sum + vote, 0);
         const totalVotesB = b.votes.reduce((sum, vote) => sum + vote, 0);
         return totalVotesB - totalVotesA;
+      } else if (sortBy === 'active') {
+        return b.isActive ? 1 : -1;
+      } else if (sortBy === 'closed') {
+        return a.isActive ? 1 : -1;
       }
       return 0;
     });
@@ -196,11 +207,11 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <Button
                 onClick={() => setShowFolderManager(true)}
                 variant="outline"
-                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-purple-200 text-purple-700 hover:text-purple-800"
+                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-purple-200 text-purple-700 hover:text-purple-800 flex-shrink-0"
               >
                 <Folder className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">New Folder</span>
@@ -209,7 +220,7 @@ const Dashboard: React.FC = () => {
               
               <Button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg flex-shrink-0"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Create Poll</span>
@@ -219,7 +230,7 @@ const Dashboard: React.FC = () => {
               <Button
                 onClick={handleLogout}
                 variant="outline"
-                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-red-200 text-red-600 hover:text-red-700"
+                className="bg-white/80 backdrop-blur-sm hover:bg-white/90 border-red-200 text-red-600 hover:text-red-700 flex-shrink-0"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Logout</span>
@@ -284,11 +295,11 @@ const Dashboard: React.FC = () => {
         <PollsSearchFilter
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
-          selectedFolder={selectedFolder}
-          onFolderChange={setSelectedFolder}
-          folders={folders}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          topicFilter={selectedFolder}
+          onTopicFilterChange={setSelectedFolder}
+          availableTopics={availableTopics}
         />
 
         {/* Polls Grid */}
@@ -324,37 +335,34 @@ const Dashboard: React.FC = () => {
                     <p><span className="font-medium">Created:</span> {new Date(poll.createdAt).toLocaleDateString()}</p>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <div className="flex flex-col gap-2 pt-2">
                     {poll.isActive ? (
                       <Button
                         onClick={() => handleViewLive(poll)}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm"
+                        className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm"
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">View Live</span>
-                        <span className="sm:hidden">Live</span>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Live
                       </Button>
                     ) : (
-                      <>
+                      <div className="flex gap-2">
                         <Button
                           onClick={() => handleRelaunch(poll._id)}
                           disabled={relaunchingId === poll._id}
                           className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white text-sm"
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">Relaunch</span>
-                          <span className="sm:hidden">Launch</span>
+                          <Play className="h-4 w-4 mr-2" />
+                          Relaunch
                         </Button>
                         <Button
                           onClick={() => handleViewPastResults(poll)}
                           variant="outline"
                           className="flex-1 bg-white/70 backdrop-blur-sm hover:bg-white/90 text-sm"
                         >
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          <span className="hidden sm:inline">View Results</span>
-                          <span className="sm:hidden">Results</span>
+                          <BarChart3 className="h-4 w-4 mr-2" />
+                          Results
                         </Button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -395,17 +403,14 @@ const Dashboard: React.FC = () => {
         />
 
         <FolderManager
-          isOpen={showFolderManager}
-          onClose={() => setShowFolderManager(false)}
           onFolderCreated={fetchFolders}
-          existingFolders={folders}
         />
 
         <MovePollToFolder
           isOpen={!!pollToMove}
           onClose={() => setPollToMove(null)}
-          poll={pollToMove}
-          folders={folders}
+          pollCode={pollToMove?.code || ''}
+          pollQuestion={pollToMove?.question || ''}
           onPollMoved={fetchPolls}
         />
       </div>
