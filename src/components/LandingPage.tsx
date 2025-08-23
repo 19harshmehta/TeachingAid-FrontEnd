@@ -2,9 +2,15 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { BarChart3, Users, Zap, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, Zap, TrendingUp, Download } from 'lucide-react';
 
-const LandingPage = () => {
+// Define the interface for the props this component will receive
+interface LandingPageProps {
+  installPrompt: Event | null;
+  onInstall: () => void;
+}
+
+const LandingPage = ({ installPrompt, onInstall }: LandingPageProps) => {
   const navigate = useNavigate();
 
   return (
@@ -25,13 +31,26 @@ const LandingPage = () => {
               PollSync
             </span>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate('/login')}
-            className="bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
-          >
-            Login to Create Poll
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* Conditional Install Button */}
+            {installPrompt && (
+              <Button 
+                variant="outline" 
+                onClick={onInstall}
+                className="hidden sm:flex bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Install App
+              </Button>
+            )}
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/login')}
+              className="bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
+            >
+              Login to Create Poll
+            </Button>
+          </div>
         </header>
 
         {/* Hero Section */}
@@ -43,12 +62,10 @@ const LandingPage = () => {
             <br />
             <span className="text-violet-600">Instantly.</span>
           </h1>
-          
           <p className="text-lg sm:text-xl md:text-2xl text-gray-700 mb-12 max-w-3xl mx-auto px-4">
             Engage your audience with interactive polls and see results update in real-time. 
             Perfect for classrooms, presentations, and events.
           </p>
-
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center px-4">
             <Button 
               size="lg" 
@@ -57,7 +74,6 @@ const LandingPage = () => {
             >
               Login to Create Poll
             </Button>
-            
             <Button 
               size="lg" 
               variant="outline"
@@ -82,7 +98,6 @@ const LandingPage = () => {
               </p>
             </div>
           </Card>
-
           <Card className="p-6 sm:p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -94,7 +109,6 @@ const LandingPage = () => {
               </p>
             </div>
           </Card>
-
           <Card className="p-6 sm:p-8 bg-white/70 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 animate-fade-in" style={{ animationDelay: '0.4s' }}>
             <div className="text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-violet-500 rounded-full flex items-center justify-center mx-auto mb-4">
