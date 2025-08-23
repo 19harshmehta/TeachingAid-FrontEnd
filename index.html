@@ -87,6 +87,38 @@
           });
       });
     }
+
+    let deferredPrompt; // This variable will save the event
+    const installButton = document.getElementById('install-button');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      deferredPrompt = e;
+      // Update the UI to show the install button
+      installButton.style.display = 'block';
+      console.log('`beforeinstallprompt` event was fired.');
+    });
+
+    installButton.addEventListener('click', async () => {
+      // Hide our install button
+      installButton.style.display = 'none';
+      // Show the browser's install prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      // We've used the prompt, and can't use it again, throw it away
+      deferredPrompt = null;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      // Hide the install button if the app is installed
+      installButton.style.display = 'none';
+      deferredPrompt = null;
+      console.log('PWA was installed');
+    });
   </script>
 </body>
 
