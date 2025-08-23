@@ -30,6 +30,7 @@ interface BeforeInstallPromptEvent extends Event {
 const PageTitleHandler = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   React.useEffect(() => {
+    // This part of your code remains unchanged
     const titles: { [key: string]: string } = {
       '/': 'PollSync - Real-time Polling Made Easy',
       '/login': 'Login - PollSync',
@@ -67,6 +68,7 @@ const App = () => {
     setInstallPrompt(null);
   };
   
+  // This part of your code for removing branding remains unchanged
   React.useEffect(() => {
     const removeLovableBranding = () => {
       const lovableElements = document.querySelectorAll('[data-lovable], [class*="lovable"], [id*="lovable"]');
@@ -87,6 +89,7 @@ const App = () => {
           <AuthProvider>
             <PageTitleHandler>
               <Routes>
+                {/* This Route now correctly passes props to the Index component */}
                 <Route 
                   path="/" 
                   element={<Index installPrompt={installPrompt} onInstall={handleInstallClick} />} 
