@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { BarChart3, Users, Zap, TrendingUp, Download } from 'lucide-react';
+import { BarChart3, Users, Zap, TrendingUp } from 'lucide-react';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -26,24 +25,13 @@ const LandingPage = () => {
               PollSync
             </span>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 items-center">
-            {/* Mobile App Download Button - Only visible on mobile */}
-            <Button 
-              id="install-button"
-              variant="outline" 
-              className="sm:hidden bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Mobile App
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate('/login')}
-              className="bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
-            >
-              Login to Create Poll
-            </Button>
-          </div>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/login')}
+            className="bg-white/70 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
+          >
+            Login to Create Poll
+          </Button>
         </header>
 
         {/* Hero Section */}
