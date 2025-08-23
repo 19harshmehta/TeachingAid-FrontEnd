@@ -12,7 +12,8 @@
   <meta name="author" content="PollSync" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://instant-pulse.vercel.app/" />
-  
+  <link rel="manifest" href="public/manifest.json" />
+
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="PollSync" />
@@ -74,6 +75,19 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful:', registration.scope);
+          })
+          .catch(err => {
+            console.log('ServiceWorker registration failed:', err);
+          });
+      });
+    }
+  </script>
 </body>
 
 </html>
