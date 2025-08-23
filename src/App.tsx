@@ -17,7 +17,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
-// This interface defines the shape of the event object for TypeScript
+// This interface helps TypeScript understand the special 'beforeinstallprompt' event
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
@@ -63,7 +63,7 @@ const App = () => {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    console.log(`User response: ${outcome}`);
+    console.log(`User response to the install prompt: ${outcome}`);
     setInstallPrompt(null);
   };
   
