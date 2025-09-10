@@ -33,7 +33,7 @@ interface Poll {
   isActive: boolean;
   createdAt: string;
   votes: number[];
-  allowMultiple?: boolean;
+  allowMultiple: boolean;
 }
 
 interface Quiz {
@@ -232,8 +232,8 @@ const Dashboard = () => {
           </TabsContent>
         </Tabs>
 
-        <CreatePollModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={fetchPolls} />
-        <CreateQuizModal isOpen={showCreateQuizModal} onClose={() => setShowCreateQuizModal(false)} onSuccess={fetchQuizzes} />
+        <CreatePollModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onSuccess={() => { fetchPolls(); }} />
+        <CreateQuizModal isOpen={showCreateQuizModal} onClose={() => setShowCreateQuizModal(false)} onSuccess={() => { fetchQuizzes(); }} />
         <QRCodeModal isOpen={showQRModal} onClose={() => setShowQRModal(false)} pollCode={selectedPollForQR} />
       </div>
     </div>

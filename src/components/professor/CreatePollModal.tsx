@@ -14,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 interface CreatePollModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPollCreated: () => void;
+  onSuccess: () => void;
 }
 
-const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
+const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [question, setQuestion] = useState('');
   const [topic, setTopic] = useState('');
   const [options, setOptions] = useState(['', '']);
@@ -35,7 +35,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
         title: "Success",
         description: "Poll created successfully!",
       });
-      onPollCreated();
+      onSuccess();
       handleClose();
     } catch (error) {
       console.error("Error creating poll:", error);
@@ -93,7 +93,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
         description: `Successfully created ${result.pollsCreated || 'multiple'} polls from CSV`,
       });
 
-      onPollCreated();
+      onSuccess();
       handleClose();
     } catch (error) {
       console.error('Error uploading CSV:', error);
