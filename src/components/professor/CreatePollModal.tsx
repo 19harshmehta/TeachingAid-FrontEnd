@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Upload, Download, Plus, X, Users, ArrowLeft } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { Upload, Download, Plus, X } from "lucide-react";
 import { pollAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,7 +17,10 @@ interface CreatePollModalProps {
   onPollCreated: () => void;
 }
 
+type CreateMode = 'selection' | 'single' | 'bulk' | 'group';
+
 const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
+  const [createMode, setCreateMode] = useState<CreateMode>('selection');
   const [question, setQuestion] = useState('');
   const [topic, setTopic] = useState('');
   const [options, setOptions] = useState(['', '']);
@@ -25,6 +28,12 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
   const [isLoading, setIsLoading] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isUploadingCsv, setIsUploadingCsv] = useState(false);
+  
+  // Poll Group fields
+  const [groupName, setGroupName] = useState('');
+  const [groupDescription, setGroupDescription] = useState('');
+  const [groupPolls, setGroupPolls] = useState([{ question: '', topic: '', options: ['', ''], allowMultiple: false }]);
+  
   const { toast } = useToast();
 
   const handleSubmit = async () => {
@@ -116,186 +125,469 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPo
   document.body.removeChild(link);
 };
 
+  const addPollToGroup = () => {
+    setGroupPolls([...groupPolls, { question: '', topic: '', options: ['', ''], allowMultiple: false }]);
+  };
+
+  const removePollFromGroup = (index: number) => {
+    if (groupPolls.length > 1) {
+      const newPolls = [...groupPolls];
+      newPolls.splice(index, 1);
+      setGroupPolls(newPolls);
+    }
+  };
+
+  const updateGroupPoll = (index: number, field: string, value: any) => {
+    const newPolls = [...groupPolls];
+    newPolls[index] = { ...newPolls[index], [field]: value };
+    setGroupPolls(newPolls);
+  };
+
+  const addOptionToGroupPoll = (pollIndex: number) => {
+    const newPolls = [...groupPolls];
+    newPolls[pollIndex].options.push('');
+    setGroupPolls(newPolls);
+  };
+
+  const removeOptionFromGroupPoll = (pollIndex: number, optionIndex: number) => {
+    const newPolls = [...groupPolls];
+    if (newPolls[pollIndex].options.length > 2) {
+      newPolls[pollIndex].options.splice(optionIndex, 1);
+      setGroupPolls(newPolls);
+    }
+  };
+
+  const updateGroupPollOption = (pollIndex: number, optionIndex: number, value: string) => {
+    const newPolls = [...groupPolls];
+    newPolls[pollIndex].options[optionIndex] = value;
+    setGroupPolls(newPolls);
+  };
+
+  const handleSubmitGroup = async () => {
+    setIsLoading(true);
+    try {
+      // Create each poll in the group individually
+      const createPromises = groupPolls.map(poll => 
+        pollAPI.create(poll.question, poll.topic, poll.options, poll.allowMultiple)
+      );
+      
+      await Promise.all(createPromises);
+      
+      toast({
+        title: "Success",
+        description: `Poll group "${groupName}" created successfully with ${groupPolls.length} polls!`,
+      });
+      onPollCreated();
+      handleClose();
+    } catch (error) {
+      console.error("Error creating poll group:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create poll group.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleClose = () => {
+    setCreateMode('selection');
     setQuestion('');
     setTopic('');
     setOptions(['', '']);
     setAllowMultiple(false);
     setCsvFile(null);
+    setGroupName('');
+    setGroupDescription('');
+    setGroupPolls([{ question: '', topic: '', options: ['', ''], allowMultiple: false }]);
     onClose();
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 shadow-2xl">
-        <DialogHeader className="pb-6 border-b border-purple-200">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
-            Create New Poll
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-8 p-2">
-          {/* Single Poll Creation */}
-          <div className="space-y-6 p-6 rounded-xl bg-gradient-to-r from-white/90 to-purple-50/80 backdrop-blur-sm border-2 border-purple-200 shadow-lg">
-            <h3 className="text-lg font-semibold flex items-center gap-3 text-purple-800">
-              <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
-                <Plus className="h-5 w-5 text-white" />
-              </div>
-              Create Single Poll
-            </h3>
-            
-            <div className="grid gap-6">
-              <div className="grid gap-3">
-                <Label htmlFor="question" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
-                  Question
-                </Label>
-                <Textarea
-                  id="question"
-                  placeholder="Enter your poll question..."
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  className="min-h-[100px] bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg text-gray-800"
-                />
-              </div>
-
-              <div className="grid gap-3">
-                <Label htmlFor="topic" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"></div>
-                  Topic
-                </Label>
-                <Input
-                  id="topic"
-                  placeholder="Enter poll topic..."
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  className="bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg h-12"
-                />
-              </div>
-
-              <div className="grid gap-4">
-                <Label className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"></div>
-                  Options
-                </Label>
-                {options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <div className="flex-1">
-                      <Input
-                        type="text"
-                        placeholder={`Option ${index + 1}`}
-                        value={option}
-                        onChange={(e) => {
-                          const newOptions = [...options];
-                          newOptions[index] = e.target.value;
-                          setOptions(newOptions);
-                        }}
-                        className="bg-white/80 border-2 border-purple-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-200 rounded-lg h-12"
-                      />
-                    </div>
-                    {options.length > 2 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeOption(index)}
-                        className="hover:bg-red-100 hover:text-red-600 rounded-lg h-12 w-12 border-2 border-transparent hover:border-red-200"
-                      >
-                        <X className="h-5 w-5" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={addOption}
-                  className="w-fit border-2 border-dashed border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400 rounded-lg h-10"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Option
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-100/80 to-pink-100/80 border-2 border-purple-200">
-                <Label htmlFor="allowMultiple" className="text-sm font-semibold text-purple-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500"></div>
-                  Allow Multiple Selections
-                </Label>
-                <Switch
-                  id="allowMultiple"
-                  checked={allowMultiple}
-                  onCheckedChange={(checked) => setAllowMultiple(checked)}
-                />
-              </div>
+  const renderSelectionView = () => (
+    <div className="space-y-6 p-6">
+      <div className="text-center mb-8">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
+          Choose how you want to create polls
+        </h2>
+        <p className="text-muted-foreground">
+          Select one of the options below to get started
+        </p>
+      </div>
+      
+      <div className="grid gap-4">
+        <Button
+          onClick={() => setCreateMode('single')}
+          className="w-full h-20 bg-gradient-purple text-white hover:opacity-90 transition-all duration-200 shadow-lg"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-white/20">
+              <Plus className="h-6 w-6" />
             </div>
-            
-            <Button 
-              onClick={handleSubmit} 
-              disabled={isLoading || !question.trim() || !topic.trim() || options.some(opt => !opt.trim())} 
-              className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            <div className="text-left">
+              <div className="font-semibold text-lg">Create Single Poll</div>
+              <div className="text-sm opacity-90">Create one poll with custom options</div>
+            </div>
+          </div>
+        </Button>
+
+        <Button
+          onClick={() => setCreateMode('bulk')}
+          className="w-full h-20 bg-gradient-blue text-white hover:opacity-90 transition-all duration-200 shadow-lg"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-white/20">
+              <Upload className="h-6 w-6" />
+            </div>
+            <div className="text-left">
+              <div className="font-semibold text-lg">Bulk Upload by CSV</div>
+              <div className="text-sm opacity-90">Upload multiple polls from a CSV file</div>
+            </div>
+          </div>
+        </Button>
+
+        <Button
+          onClick={() => setCreateMode('group')}
+          className="w-full h-20 bg-gradient-pink text-white hover:opacity-90 transition-all duration-200 shadow-lg"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-lg bg-white/20">
+              <Users className="h-6 w-6" />
+            </div>
+            <div className="text-left">
+              <div className="font-semibold text-lg">Create a Poll Group</div>
+              <div className="text-sm opacity-90">Create multiple related polls together</div>
+            </div>
+          </div>
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderSinglePollView = () => (
+    <div className="space-y-6 p-6 bg-card rounded-lg border">
+      <div className="flex items-center gap-3 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCreateMode('selection')}
+          className="hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h3 className="text-lg font-semibold text-foreground">Create Single Poll</h3>
+      </div>
+      
+      <div className="grid gap-6">
+        <div className="grid gap-3">
+          <Label htmlFor="question" className="text-sm font-medium text-foreground">
+            Question
+          </Label>
+          <Textarea
+            id="question"
+            placeholder="Enter your poll question..."
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            className="min-h-[100px]"
+          />
+        </div>
+
+        <div className="grid gap-3">
+          <Label htmlFor="topic" className="text-sm font-medium text-foreground">
+            Topic
+          </Label>
+          <Input
+            id="topic"
+            placeholder="Enter poll topic..."
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+          />
+        </div>
+
+        <div className="grid gap-4">
+          <Label className="text-sm font-medium text-foreground">Options</Label>
+          {options.map((option, index) => (
+            <div key={index} className="flex items-center space-x-3">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  placeholder={`Option ${index + 1}`}
+                  value={option}
+                  onChange={(e) => {
+                    const newOptions = [...options];
+                    newOptions[index] = e.target.value;
+                    setOptions(newOptions);
+                  }}
+                />
+              </div>
+              {options.length > 2 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeOption(index)}
+                  className="hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          ))}
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={addOption}
+            className="w-fit"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Option
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-between p-4 rounded-lg bg-muted">
+          <Label htmlFor="allowMultiple" className="text-sm font-medium text-foreground">
+            Allow Multiple Selections
+          </Label>
+          <Switch
+            id="allowMultiple"
+            checked={allowMultiple}
+            onCheckedChange={(checked) => setAllowMultiple(checked)}
+          />
+        </div>
+      </div>
+      
+      <Button 
+        onClick={handleSubmit} 
+        disabled={isLoading || !question.trim() || !topic.trim() || options.some(opt => !opt.trim())} 
+        className="w-full bg-gradient-purple text-white hover:opacity-90"
+      >
+        {isLoading ? 'Creating...' : 'Create Poll'}
+      </Button>
+    </div>
+  );
+
+  const renderBulkUploadView = () => (
+    <div className="space-y-6 p-6 bg-card rounded-lg border">
+      <div className="flex items-center gap-3 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCreateMode('selection')}
+          className="hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h3 className="text-lg font-semibold text-foreground">Bulk Upload from CSV</h3>
+      </div>
+      
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-lg bg-muted">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadTemplate}
+            className="flex items-center gap-2 shrink-0"
+          >
+            <Download className="h-4 w-4" />
+            Download Template
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            Download the CSV template to see the required format for bulk poll creation
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <Label htmlFor="csv-file" className="text-sm font-medium text-foreground">
+            Upload CSV File
+          </Label>
+          <Input
+            id="csv-file"
+            type="file"
+            accept=".csv"
+            onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+            className="cursor-pointer"
+          />
+          {csvFile && (
+            <p className="text-sm text-muted-foreground bg-muted p-2 rounded-lg">
+              Selected: {csvFile.name}
+            </p>
+          )}
+        </div>
+        
+        <Button
+          onClick={handleCsvUpload}
+          disabled={!csvFile || isUploadingCsv}
+          className="w-full bg-gradient-blue text-white hover:opacity-90"
+        >
+          {isUploadingCsv ? 'Uploading...' : 'Upload CSV'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderGroupPollView = () => (
+    <div className="space-y-6 p-6 bg-card rounded-lg border">
+      <div className="flex items-center gap-3 mb-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCreateMode('selection')}
+          className="hover:bg-muted"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h3 className="text-lg font-semibold text-foreground">Create Poll Group</h3>
+      </div>
+
+      <div className="grid gap-6">
+        <div className="grid gap-3">
+          <Label htmlFor="groupName" className="text-sm font-medium text-foreground">
+            Group Name
+          </Label>
+          <Input
+            id="groupName"
+            placeholder="Enter group name..."
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+          />
+        </div>
+
+        <div className="grid gap-3">
+          <Label htmlFor="groupDescription" className="text-sm font-medium text-foreground">
+            Group Description (Optional)
+          </Label>
+          <Textarea
+            id="groupDescription"
+            placeholder="Enter group description..."
+            value={groupDescription}
+            onChange={(e) => setGroupDescription(e.target.value)}
+            className="min-h-[80px]"
+          />
+        </div>
+
+        <Separator />
+
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-foreground">Polls in Group</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addPollToGroup}
+              className="flex items-center gap-2"
             >
-              {isLoading ? 'Creating...' : 'Create Poll'}
+              <Plus className="h-4 w-4" />
+              Add Poll
             </Button>
           </div>
 
-          <Separator className="bg-gradient-to-r from-purple-300 to-pink-300 h-0.5" />
-
-          {/* Bulk Upload Section */}
-          <div className="space-y-6 p-6 rounded-xl bg-gradient-to-r from-white/90 to-blue-50/80 backdrop-blur-sm border-2 border-blue-200 shadow-lg">
-            <h3 className="text-lg font-semibold flex items-center gap-3 text-blue-800">
-              <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500">
-                <Upload className="h-5 w-5 text-white" />
-              </div>
-              Bulk Upload from CSV
-            </h3>
-            
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-blue-50/80 to-cyan-50/80 border-2 border-blue-200">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={downloadTemplate}
-                  className="flex items-center gap-2 shrink-0 border-2 border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400 rounded-lg h-10"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Template
-                </Button>
-                <div className="text-sm text-blue-700 font-medium">
-                  Download the CSV template to see the required format for bulk poll creation
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <Label htmlFor="csv-file" className="text-sm font-semibold text-blue-700 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500"></div>
-                  Upload CSV File
-                </Label>
-                <Input
-                  id="csv-file"
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
-                  className="cursor-pointer bg-white/80 border-2 border-blue-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 rounded-lg h-12 file:bg-gradient-to-r file:from-blue-500 file:to-cyan-500 file:text-white file:border-0 file:rounded-md file:px-4 file:py-2 file:text-sm file:font-medium file:mr-4"
-                />
-                {csvFile && (
-                  <p className="text-sm text-blue-600 font-medium bg-blue-50 p-2 rounded-lg border border-blue-200">
-                    Selected: {csvFile.name}
-                  </p>
+          {groupPolls.map((poll, pollIndex) => (
+            <div key={pollIndex} className="p-4 rounded-lg bg-muted space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-foreground">Poll {pollIndex + 1}</h4>
+                {groupPolls.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removePollFromGroup(pollIndex)}
+                    className="hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-              
-              <Button
-                onClick={handleCsvUpload}
-                disabled={!csvFile || isUploadingCsv}
-                className="w-full h-12 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                {isUploadingCsv ? 'Uploading...' : 'Upload CSV'}
-              </Button>
+
+              <div className="grid gap-4">
+                <Input
+                  placeholder="Poll question..."
+                  value={poll.question}
+                  onChange={(e) => updateGroupPoll(pollIndex, 'question', e.target.value)}
+                />
+                
+                <Input
+                  placeholder="Poll topic..."
+                  value={poll.topic}
+                  onChange={(e) => updateGroupPoll(pollIndex, 'topic', e.target.value)}
+                />
+
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Options</Label>
+                  {poll.options.map((option, optionIndex) => (
+                    <div key={optionIndex} className="flex items-center space-x-2">
+                      <Input
+                        placeholder={`Option ${optionIndex + 1}`}
+                        value={option}
+                        onChange={(e) => updateGroupPollOption(pollIndex, optionIndex, e.target.value)}
+                      />
+                      {poll.options.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeOptionFromGroupPoll(pollIndex, optionIndex)}
+                          className="hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addOptionToGroupPoll(pollIndex)}
+                    className="w-fit"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Option
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Allow Multiple Selections</Label>
+                  <Switch
+                    checked={poll.allowMultiple}
+                    onCheckedChange={(checked) => updateGroupPoll(pollIndex, 'allowMultiple', checked)}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
         </div>
+
+        <Button
+          onClick={handleSubmitGroup}
+          disabled={isLoading || !groupName.trim() || groupPolls.some(poll => 
+            !poll.question.trim() || !poll.topic.trim() || poll.options.some(opt => !opt.trim())
+          )}
+          className="w-full bg-gradient-pink text-white hover:opacity-90"
+        >
+          {isLoading ? 'Creating Group...' : `Create Poll Group (${groupPolls.length} polls)`}
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-background border shadow-lg">
+        <DialogHeader className="pb-6 border-b">
+          <DialogTitle className="text-2xl font-bold text-foreground">
+            {createMode === 'selection' && 'Create New Poll'}
+            {createMode === 'single' && 'Create Single Poll'}
+            {createMode === 'bulk' && 'Bulk Upload Polls'}
+            {createMode === 'group' && 'Create Poll Group'}
+          </DialogTitle>
+        </DialogHeader>
+        
+        {createMode === 'selection' && renderSelectionView()}
+        {createMode === 'single' && renderSinglePollView()}
+        {createMode === 'bulk' && renderBulkUploadView()}
+        {createMode === 'group' && renderGroupPollView()}
       </DialogContent>
     </Dialog>
   );
