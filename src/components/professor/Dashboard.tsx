@@ -77,9 +77,15 @@ const Dashboard = () => {
   const fetchPolls = async () => {
     try {
       const response = await pollAPI.getMyPolls();
+      console.log('Polls response:', response);
       setPolls(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching polls:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch polls. Please try again.',
+        variant: 'destructive',
+      });
       setPolls([]);
     } finally {
       setLoading(false);
@@ -177,18 +183,70 @@ const Dashboard = () => {
                 Create Poll
               </Button>
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Polls</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {polls.map((poll) => (
-                  <div key={poll._id}>
-                    {poll.question}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              {polls.length === 0 ? (
+                <Card>
+                  <CardContent className="p-6 text-center text-gray-500">
+                    No polls created yet. Create your first poll to get started!
+                  </CardContent>
+                </Card>
+              ) : (
+                polls.map((poll) => (
+                  <Card key={poll._id}>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold mb-2">{poll.question}</h3>
+                          {poll.topic && (
+                            <p className="text-sm text-gray-600 mb-2">Topic: {poll.topic}</p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {poll.options.map((option, index) => (
+                              <span key={index} className="px-3 py-1 bg-gray-100 rounded-full text-sm">
+                                {option} ({poll.votes[index] || 0})
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span>Code: {poll.code}</span>
+                            <span>{poll.allowMultiple ? 'Multiple choice' : 'Single choice'}</span>
+                            <span className={`px-2 py-1 rounded-full text-xs ${poll.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                              {poll.isActive ? 'Active' : 'Closed'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedPollForQR(poll.code);
+                              setShowQRModal(true);
+                            }}
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setViewingPastResults(poll)}
+                          >
+                            <BarChart3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setActivePoll(poll)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="quizzes" className="space-y-6">
