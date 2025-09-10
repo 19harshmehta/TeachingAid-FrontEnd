@@ -13,6 +13,7 @@ import Dashboard from "./components/professor/Dashboard";
 import JoinPollPage from "./components/student/JoinPollPage";
 import JoinPollWithCode from "./components/student/JoinPollWithCode";
 import VotingPage from "./components/student/VotingPage";
+import QuizVotingPage from "./components/student/QuizVotingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -32,8 +33,10 @@ const PageTitleHandler = ({ children }: { children: React.ReactNode }) => {
     
     let title = titles[location.pathname];
     
-    if (location.pathname.startsWith('/poll/')) {
+    if (location.pathname.startsWith('/vote/')) {
       title = 'Vote - PollSync';
+    } else if (location.pathname.startsWith('/quiz/')) {
+      title = 'Quiz - PollSync';
     }
     
     document.title = title || 'PollSync';
@@ -74,7 +77,8 @@ const App = () => {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/join" element={<JoinPollPage />} />
                 <Route path="/join/:code" element={<JoinPollWithCode />} />
-                <Route path="/poll/:code" element={<VotingPage />} />
+                <Route path="/vote/:code" element={<VotingPage />} />
+                <Route path="/quiz/:code" element={<QuizVotingPage />} />
                 <Route 
                   path="/dashboard" 
                   element={
