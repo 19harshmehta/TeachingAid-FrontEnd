@@ -68,32 +68,4 @@ export const folderAPI = {
     api.get(`/api/folder/${folderId}/polls`),
 };
 
-export const quizAPI = {
-  create: (title: string, description: string, questions: Array<{
-    question: string;
-    options: string[];
-    allowMultiple: boolean;
-  }>) =>
-    api.post('/api/quiz/create', { title, description, questions }),
-  
-  getMyQuizzes: () =>
-    api.get('/api/quiz/myquizzes'),
-  
-  getQuizByCode: (code: string) =>
-    api.get(`/api/quiz/${code}`),
-  
-  submitVotes: (code: string, fingerprint: string, votes: Array<{
-    pollId: string;
-    optionIndex?: number;
-    optionIndices?: number[];
-  }>) =>
-    api.post('/api/quiz/submit', { code, fingerprint, votes }),
-  
-  relaunch: (quizId: string, resetVotes: boolean = true, generateNewCode: boolean = false) =>
-    api.post('/api/quiz/relaunch', { quizId, resetVotes, generateNewCode }),
-  
-  updateStatus: (code: string, isActive: boolean) =>
-    api.put(`/api/quiz/${code}/status`, { isActive }),
-};
-
 export default api;

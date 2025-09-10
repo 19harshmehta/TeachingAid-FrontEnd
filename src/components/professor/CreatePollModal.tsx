@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 interface CreatePollModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onPollCreated: () => void;
 }
 
-const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onPollCreated }) => {
   const [question, setQuestion] = useState('');
   const [topic, setTopic] = useState('');
   const [options, setOptions] = useState(['', '']);
@@ -35,7 +35,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSu
         title: "Success",
         description: "Poll created successfully!",
       });
-      onSuccess();
+      onPollCreated();
       handleClose();
     } catch (error) {
       console.error("Error creating poll:", error);
@@ -93,7 +93,7 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSu
         description: `Successfully created ${result.pollsCreated || 'multiple'} polls from CSV`,
       });
 
-      onSuccess();
+      onPollCreated();
       handleClose();
     } catch (error) {
       console.error('Error uploading CSV:', error);
@@ -132,9 +132,6 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSu
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
             Create New Poll
           </DialogTitle>
-          <DialogDescription className="text-purple-600">
-            Create a new poll with multiple choice options for your audience.
-          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-8 p-2">

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Hash } from 'lucide-react';
-import { pollAPI, quizAPI } from '@/services/api';
+import { pollAPI } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
 const JoinPollPage = () => {
@@ -19,39 +19,34 @@ const JoinPollPage = () => {
     
     if (!pollCode.trim()) {
       toast({
-        title: 'Error',
-        description: 'Please enter a code',
-        variant: 'destructive',
+        title: "Error",
+        description: "Please enter a poll code",
+        variant: "destructive",
       });
       return;
     }
 
     setLoading(true);
+
     try {
-      const code = pollCode.toUpperCase();
+      const response = await pollAPI.getPollByCode(pollCode.trim().toUpperCase());
+      const poll = response.data;
       
-      // First try to fetch as a quiz
-      try {
-        await quizAPI.getQuizByCode(code);
-        navigate(`/quiz/${code}`);
+      if (!poll.isActive) {
+        toast({
+          title: "Poll Inactive",
+          description: "This poll is not currently active",
+          variant: "destructive",
+        });
         return;
-      } catch (quizError) {
-        // If quiz fetch fails, try as a poll
-        try {
-          await pollAPI.getPollByCode(code);
-          navigate(`/vote/${code}`);
-          return;
-        } catch (pollError) {
-          // Both failed
-          throw new Error('Code not found');
-        }
       }
-    } catch (error) {
-      console.error('Error fetching code:', error);
+
+      navigate(`/poll/${poll.code}`, { state: { poll } });
+    } catch (error: any) {
       toast({
-        title: 'Error',
-        description: 'Code not found. Please check the code and try again.',
-        variant: 'destructive',
+        title: "Poll Not Found",
+        description: error.response?.data?.message || "Invalid poll code",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -75,7 +70,7 @@ const JoinPollPage = () => {
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               Join a Poll
             </CardTitle>
-            <p className="text-gray-600">Enter the code provided by your instructor</p>
+            <p className="text-gray-600">Enter the poll code provided by the poll creator</p>
           </CardHeader>
           
           <CardContent>
@@ -87,7 +82,7 @@ const JoinPollPage = () => {
                   <Input
                     id="pollCode"
                     type="text"
-                    placeholder="Enter code (e.g., ABC123)"
+                    placeholder="Enter poll code (e.g., ABC123)"
                     value={pollCode}
                     onChange={(e) => setPollCode(e.target.value.toUpperCase())}
                     className="pl-10 text-center text-lg font-mono"
@@ -102,13 +97,13 @@ const JoinPollPage = () => {
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 disabled={loading}
               >
-                {loading ? 'Joining...' : 'Join Session'}
+                {loading ? 'Joining...' : 'Join Poll'}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
-                Don't have a code? Ask your instructor to provide one.
+                Don't have a poll code? Ask the poll creator to provide one.
               </p>
             </div>
           </CardContent>
@@ -121,7 +116,7 @@ const JoinPollPage = () => {
               How it works
             </h3>
             <div className="text-sm text-blue-700 space-y-1">
-              <p>1. Get the code from your instructor</p>
+              <p>1. Get the poll code from the poll creator</p>
               <p>2. Enter the code above</p>
               <p>3. Vote and see live results!</p>
             </div>
