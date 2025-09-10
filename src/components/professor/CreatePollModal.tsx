@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -132,6 +132,9 @@ const CreatePollModal: React.FC<CreatePollModalProps> = ({ isOpen, onClose, onSu
           <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent">
             Create New Poll
           </DialogTitle>
+          <DialogDescription className="text-purple-600">
+            Create a new poll with multiple choice options for your audience.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-8 p-2">

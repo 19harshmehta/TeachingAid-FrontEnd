@@ -91,7 +91,7 @@ const Dashboard = () => {
       const response = await quizAPI.getMyQuizzes();
       setQuizzes(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error('Error fetching quizzes:', error);
+      // Silently handle 404 for now since backend endpoint may not exist yet
       setQuizzes([]);
     }
   };

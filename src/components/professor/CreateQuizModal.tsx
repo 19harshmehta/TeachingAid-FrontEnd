@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,6 +151,9 @@ const CreateQuizModal: React.FC<CreateQuizModalProps> = ({ isOpen, onClose, onSu
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Quiz</DialogTitle>
+          <DialogDescription>
+            Create a multi-question quiz with various answer options.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { QRCodeSVG } from 'qrcode.react';
 import { X } from 'lucide-react';
@@ -18,6 +18,9 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, pollCode }) 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">Scan to Join Poll</DialogTitle>
+          <DialogDescription className="text-center">
+            Scan this QR code to join the poll or quiz session.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center space-y-4 p-6">
           <div className="bg-white p-4 rounded-lg shadow-lg">
