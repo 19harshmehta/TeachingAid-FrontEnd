@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderInput, Folder, History } from 'lucide-react';
+import { Plus, BarChart3, LogOut, Eye, Play, QrCode, X, FolderInput, Folder, History, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CreatePollModal from './CreatePollModal';
 import LivePollView from './LivePollView';
@@ -20,6 +20,16 @@ import QRCodeModal from './QRCodeModal';
 import PollsSearchFilter from './PollsSearchFilter';
 import FolderManager from './FolderManager';
 import MovePollToFolder from './MovePollToFolder';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Poll {
   _id: string;
@@ -64,6 +74,8 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [topicFilter, setTopicFilter] = useState('all');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [pollToDelete, setPollToDelete] = useState<{ code: string; question: string } | null>(null);
 
   // Ensure polls is always an array
   const safePollsArray = Array.isArray(polls) ? polls : [];
@@ -235,6 +247,33 @@ const Dashboard = () => {
     setPolls(polls.map(poll => 
       poll._id === updatedPoll._id ? updatedPoll : poll
     ));
+  };
+
+  const handleDeleteClick = (poll: Poll) => {
+    setPollToDelete({ code: poll.code, question: poll.question });
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pollToDelete) return;
+    
+    try {
+      await pollAPI.deletePoll(pollToDelete.code);
+      toast({
+        title: "Poll Deleted",
+        description: "Poll has been deleted successfully",
+      });
+      setShowDeleteDialog(false);
+      setPollToDelete(null);
+      fetchPolls();
+    } catch (error) {
+      console.error('Error deleting poll:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete poll",
+        variant: "destructive",
+      });
+    }
   };
 
   const availableTopics = useMemo(() => {
@@ -552,6 +591,16 @@ const Dashboard = () => {
                           <span className="hidden sm:inline ml-1">QR</span>
                         </Button>
                         
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteClick(poll)}
+                          className="flex-1 lg:flex-none min-w-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="hidden sm:inline ml-1">Delete</span>
+                        </Button>
+                        
                         {poll.isActive ? (
                           <>
                             <Button
@@ -634,6 +683,21 @@ const Dashboard = () => {
           }}
         />
       )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Poll?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{pollToDelete?.question}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
